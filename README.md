@@ -1,22 +1,33 @@
-## Group Size, CEP, and Hit Probability
+## Group Size, AMR, CEP, and Hit Probability
 
-People often measure firearm [precision](http://en.wikipedia.org/wiki/Accuracy_and_precision) in terms of group size. This program lets you run Monte Carlo simulation to determine relationships between group size and other metrics. Impact coordinates are pulled from the same [bivariate normal distribution](http://en.wikipedia.org/wiki/Bivariate_normal_distribution) with mean 0 and variance 1 to make results comparable. If you don't want to run the simulations yourself, this page covers some common cases.
+People often measure firearm [precision](http://en.wikipedia.org/wiki/Accuracy_and_precision) in terms of group size. This program lets you run Monte Carlo simulation to determine relationships between group size and other metrics. Except where noted, impact coordinates are pulled from the same [bivariate normal distribution](http://en.wikipedia.org/wiki/Bivariate_normal_distribution) with mean 0 and variance 1 to make results comparable. If you don't want to run the simulations yourself, this page covers some common cases.
 
 ### Group Size
 
 Group size is maximum distance between the centers of two shots in a group.
 
-![Measuring group size](http://i.imgur.com/GUjgxni.jpg)
+![Measuring group size](group_size.jpg?raw=true)
 
 Here are some group sizes pulled from our reference distribution:
 
 |                    | Mean |  CV  |
 | ------------------ | ----:|-----:|
 | 3 shot group size  | 2.41 | 0.37 |
-| 5 shot group size  | 3.07 | 0.27 |
+| 5 shot group size  | 3.06 | 0.27 |
 | 10 shot group size | 3.81 | 0.19 |
 
 CV is [coefficient of variation](http://en.wikipedia.org/wiki/Coefficient_of_variation): the ratio of standard deviation to mean. It can be thought of as *noise to signal ratio*. As you can see there's quite a bit of noise, meaning that one group does not let us measure precision well.
+
+### AMR
+
+AMR is average miss radius, measured from the mean point of impact of the group.
+
+|           |  AMR |  CV  |
+|-----------|-----:|-----:|
+| 3 shots   | 1.02 | 0.37 |
+| 5 shots   | 1.12 | 0.26 |
+| 10 shots  | 1.19 | 0.17 |
+| 100 shots | 1.25 | 0.05 |
 
 ### Target Radius
 
@@ -24,26 +35,27 @@ Radial miss distances for bivariate normal distribution follow [Rayleigh distrib
 
 |             |      Exact          | Approximate |
 |-------------|---------------------|------------:|
-| R50 aka CEP | `sqrt(-2*ln(0.5))`  |        1.18 |
-| R90         | `sqrt(-2*ln(0.1))`  |        2.15 |
-| R95         | `sqrt(-2*ln(0.05))` |        2.45 |
-| R99         | `sqrt(-2*ln(0.01))` |        3.03 |
+| R<sub>50</sub> aka CEP | `sqrt(-2*ln(0.5))`  |        1.18 |
+| R<sub>90</sub>         | `sqrt(-2*ln(0.1))`  |        2.15 |
+| R<sub>95</sub>         | `sqrt(-2*ln(0.05))` |        2.45 |
+| R<sub>99</sub>         | `sqrt(-2*ln(0.01))` |        3.03 |
 
-Here R50 is radius of a circle containing centers of half the impacts, R90 contains 90% and so on.
+Here R<sub>50</sub> is radius of a circle containing centers of half the impacts, R<sub>90</sub> contains 90% and so on.
 
 Using the tables below, one can convert between group size and radius of the circle containing given proportion of impacts. This conversion assumes ideal accuracy (perfect zero). More on that later.
 
-|                  |3 shot group size|5 shot group size|10 shot group size|R50 |R90 |R95 |R99 |
+|                  |3 shot group size|5 shot group size|10 shot group size|R<sub>50</sub> |R<sub>90</sub> |R<sub>95</sub> |R<sub>99</sub> |
 |------------------|----------------:|----------------:|-----------------:|---:|---:|---:|---:|
 |3 shot group size |             1.00|             1.27|              1.58|0.49|0.89|1.02|1.26|
 |5 shot group size |             0.79|             1.00|              1.24|0.38|0.70|0.80|0.99|
 |10 shot group size|             0.63|             0.80|              1.00|0.31|0.56|0.64|0.80|
-|R50               |             2.05|             2.60|              3.24|1.00|1.82|2.08|2.58|
-|R90               |             1.12|             1.43|              1.78|0.55|1.00|1.14|1.41|
-|R95               |             0.98|             1.25|              1.56|0.48|0.88|1.00|1.24|
-|R99               |             0.79|             1.01|              1.26|0.39|0.71|0.81|1.00|
+|R<sub>50</sub>    |             2.05|             2.60|              3.24|1.00|1.82|2.08|2.58|
+|R<sub>90</sub>               |             1.12|             1.43|              1.78|0.55|1.00|1.14|1.41|
+|R<sub>95</sub>    |             0.98|             1.25|              1.56|0.48|0.88|1.00|1.24|
+|R<sub>99</sub>    |             0.79|             1.01|              1.26|0.39|0.71|0.81|1.00|
 
-> **Example 1**: A 4" 5 shot group corresponds to R95 = 4" * 2.45 / 3.07 = 4" * 0.8 = 3.2"
+> **Example 1**
+> 4" 5 shot group corresponds to R<sub>95</sub> = 4" * 2.45 / 3.07 = 4" * 0.8 = 3.2"
 
 ### Best Group
 
@@ -59,23 +71,25 @@ Sometimes people report best group size rather than average group size. Let's do
 
 Note how noisy best group size is compared to average group size. Average of two groups has less noise (CV=0.19) than best of 10 groups (CV=0.20), and it takes 10 rounds rather than 50.
 
-> **Example 2**: If the best of 10 five-shot groups measures 4", that corresponds to R95 = 4" * 2.45 / 1.89 = 5.2". Compare this number to 3.2" from Example 1.
+> **Example 2** 
+> If the best of 10 five-shot groups measures 4", that corresponds to R<sub>95</sub> = 4" * 2.45 / 1.89 = 5.2". Compare this number to 3.2" from Example 1.
 
-> **Example 3**: Averaging group sizes of two 5 shot groups works about as well as one 10 shot group size (in both cases CV is approximately 0.19).
+> **Example 3** 
+> Averaging group sizes of two 5 shot groups works about as well as one 10 shot group size (in both cases CV is approximately 0.19).
 
 ### CEP
 
 If accuracy is less than ideal, then group size alone does not mean much. 2" group 2' above the target is not particularly useful. But there is a way to estimate  hit probability that does not have this problem. It works by estimating CEP rather than group size.
 
-CEP stands for [Circular Error Probable](http://en.wikipedia.org/wiki/Circular_error_probable): minimum radius of a circle centered on the target that contains half the impacts. CEP is sometimes called R50. If we only care about precision we can center the circle about the mean, but then it won't help with hit probability.
+CEP stands for [Circular Error Probable](http://en.wikipedia.org/wiki/Circular_error_probable): minimum radius of a circle centered on the target that contains half the impacts. CEP is sometimes called R<sub>50</sub>. If we only care about precision we can center the circle about the mean, but then it won't help with hit probability.
 
 There are several ways to estimate CEP. The easiest two are median and Rayleigh estimators. Both look at *radial miss distances* - distances from the center of the target to the center of the impact.
 
 *Median CEP estimator* is the simplest one possible: rank order shots by radial miss distance, then take the median. For example, in a 5 shot group discard two impacts closest to the center of the target and two impacts furthest from the center of the target, then measure the distance between the center of the target and the center of remaining impact. This gives you estimated CEP.
 
-![Estimating CEP as median radial miss](http://i.imgur.com/5j2xkjF.jpg)
+![Estimating CEP as median radial miss](cep.jpg?raw=true)
 
-*Rayleigh CEP estimator* is a bit more work: measure all radial miss distances, take the average, then multiply it by sqrt((2 ln 4)/&pi;)&nbsp;&asymp;&nbsp;0.9394. This magic number comes from the observation that mean of Rayleigh distribution (that we just estimated by averaging radial miss distances) is &sigma;&nbsp;sqrt(&pi;/2) and CEP is median of this distribution, or &sigma;&nbsp;sqrt(ln(4)).
+*Rayleigh CEP estimator* is a bit more work: measure all radial miss distances, take the average, then multiply it by sqrt((2 ln 4)/&pi;)&nbsp;&asymp;&nbsp;0.9394. This magic number comes from the observation that mean of Rayleigh distribution (that we just estimated by averaging radial miss distances) is &sigma;&nbsp;sqrt(&pi;&nbsp;/&nbsp;2&nbsp;) and CEP is median of this distribution, or &sigma;&nbsp;sqrt(&nbsp;ln&nbsp;4&nbsp;).
 
 |             |Median Estimator Mean|Median Estimator CV|Rayleigh Estimator Mean|Rayleigh Estimator CV|
 |-------------|--------------------:|------------------:|----------------------:|--------------------:|
@@ -85,11 +99,35 @@ There are several ways to estimate CEP. The easiest two are median and Rayleigh 
 
 In this simulation CV of Rayleigh estimator is consistently lower, but that's to be expected. Rayleigh estimator is parametric - it assumes the data follows a certain distribution, and in case of our Monte Carlo simulation that's certainly true. If shots follow a different distribution, especially one with heavy tails, the picture can be different.
 
-Median estimator is non-parametric (it does not rely on assumptions about underlying distributions) and is more robust (less sensitive to outliers). It works well with large number of shots, but even for small groups it's good enough.
+Median estimator is non-parametric (it does not rely on assumptions about underlying distributions) and is more robust (less sensitive to outliers).
+
+### Contaminated Normal Distribution
+
+In practice, impact coordinates do not necessarily follow normal distribution. A canonical example is contaminated normal distribution: a mixture of a standard normal distribution and a normal distribution with a different variance. It might simulate shooter errors or other rare events. In the following example 1% of shots were pulled from the distribution with 10 times higher standard deviation.
+
+|5 shot group        |Median Estimator CV|Rayleigh Estimator CV|
+|--------------------|------------------:|--------------------:|
+|Standard normal     |               0.30|                 0.23|
+|Contaminated normal |               0.30|                 0.48|
+
+CV of median estimator did not budge, but CV of Rayleigh estimator doubled. The takeaway is that unless you are certain that the data follows normal distribution, it might be prudent to use a robust estimator such as the median.
+
+### Median Group Size
+
+Similar thing happens with group size: averaging works better with normal distribution, median is better for contaminated normal.
+
+|5 groups, 5 shots each |Average Group Size CV|Best Group Size CV|Median Group Size CV|
+|-----------------------|--------------------:|-----------------:|-------------------:|
+|Standard normal        |                 0.12|              0.21|                0.15|
+|Contaminated normal    |                 0.35|              0.22|                0.17|
+
+Distribution of group size is asymmetric, so median is not the same as mean. For standard normal, this difference is within
+2%, but can be larger for distributions with heavier tails.
 
 ### Rules of Thumb
 
-  + 3 shot group size &asymp; R95 (assuming perfect zero)
-  + 5 shot group size  &asymp; R99 (assuming perfect zero)
-  + R95 &asymp; 2 * CEP
+Assuming perfect zero:
 
+  + 3 shot group size &asymp; R<sub>95</sub> &asymp; 2 * CEP
+  + 5 shot group size  &asymp; R<sub>99</sub>
+  + CEP in cm &asymp; 5 shot group size in inches (more precisely, 2.6 rather than 2.54)
