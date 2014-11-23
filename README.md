@@ -36,21 +36,21 @@ Radial miss distances for bivariate normal distribution follow [Rayleigh distrib
 |             |      Exact          | Approximate |
 |-------------|---------------------|------------:|
 | R<sub>50</sub> aka CEP | `sqrt(-2*ln(0.5))`  |        1.18 |
-| R90         | `sqrt(-2*ln(0.1))`  |        2.15 |
+| R<sub>90</sub>         | `sqrt(-2*ln(0.1))`  |        2.15 |
 | R<sub>95</sub>         | `sqrt(-2*ln(0.05))` |        2.45 |
 | R<sub>99</sub>         | `sqrt(-2*ln(0.01))` |        3.03 |
 
-Here R<sub>50</sub> is radius of a circle containing centers of half the impacts, R90 contains 90% and so on.
+Here R<sub>50</sub> is radius of a circle containing centers of half the impacts, R<sub>90</sub> contains 90% and so on.
 
 Using the tables below, one can convert between group size and radius of the circle containing given proportion of impacts. This conversion assumes ideal accuracy (perfect zero). More on that later.
 
-|                  |3 shot group size|5 shot group size|10 shot group size|R<sub>50</sub> |R90 |R<sub>95</sub> |R<sub>99</sub> |
+|                  |3 shot group size|5 shot group size|10 shot group size|R<sub>50</sub> |R<sub>90</sub> |R<sub>95</sub> |R<sub>99</sub> |
 |------------------|----------------:|----------------:|-----------------:|---:|---:|---:|---:|
 |3 shot group size |             1.00|             1.27|              1.58|0.49|0.89|1.02|1.26|
 |5 shot group size |             0.79|             1.00|              1.24|0.38|0.70|0.80|0.99|
 |10 shot group size|             0.63|             0.80|              1.00|0.31|0.56|0.64|0.80|
 |R<sub>50</sub>    |             2.05|             2.60|              3.24|1.00|1.82|2.08|2.58|
-|R90               |             1.12|             1.43|              1.78|0.55|1.00|1.14|1.41|
+|R<sub>90</sub>               |             1.12|             1.43|              1.78|0.55|1.00|1.14|1.41|
 |R<sub>95</sub>    |             0.98|             1.25|              1.56|0.48|0.88|1.00|1.24|
 |R<sub>99</sub>    |             0.79|             1.01|              1.26|0.39|0.71|0.81|1.00|
 
