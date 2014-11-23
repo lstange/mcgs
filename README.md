@@ -35,27 +35,27 @@ Radial miss distances for bivariate normal distribution follow [Rayleigh distrib
 
 |             |      Exact          | Approximate |
 |-------------|---------------------|------------:|
-| R<sup>50</sup> aka CEP | `sqrt(-2*ln(0.5))`  |        1.18 |
+| R<sub>50</sub> aka CEP | `sqrt(-2*ln(0.5))`  |        1.18 |
 | R90         | `sqrt(-2*ln(0.1))`  |        2.15 |
-| R<sup>95</sup>         | `sqrt(-2*ln(0.05))` |        2.45 |
-| R<sup>99</sup>         | `sqrt(-2*ln(0.01))` |        3.03 |
+| R<sub>95</sub>         | `sqrt(-2*ln(0.05))` |        2.45 |
+| R<sub>99</sub>         | `sqrt(-2*ln(0.01))` |        3.03 |
 
-Here R<sup>50</sup> is radius of a circle containing centers of half the impacts, R90 contains 90% and so on.
+Here R<sub>50</sub> is radius of a circle containing centers of half the impacts, R90 contains 90% and so on.
 
 Using the tables below, one can convert between group size and radius of the circle containing given proportion of impacts. This conversion assumes ideal accuracy (perfect zero). More on that later.
 
-|                  |3 shot group size|5 shot group size|10 shot group size|R<sup>50</sup> |R90 |R<sup>95</sup> |R<sup>99</sup> |
+|                  |3 shot group size|5 shot group size|10 shot group size|R<sub>50</sub> |R90 |R<sub>95</sub> |R<sub>99</sub> |
 |------------------|----------------:|----------------:|-----------------:|---:|---:|---:|---:|
 |3 shot group size |             1.00|             1.27|              1.58|0.49|0.89|1.02|1.26|
 |5 shot group size |             0.79|             1.00|              1.24|0.38|0.70|0.80|0.99|
 |10 shot group size|             0.63|             0.80|              1.00|0.31|0.56|0.64|0.80|
-|R<sup>50</sup>    |             2.05|             2.60|              3.24|1.00|1.82|2.08|2.58|
+|R<sub>50</sub>    |             2.05|             2.60|              3.24|1.00|1.82|2.08|2.58|
 |R90               |             1.12|             1.43|              1.78|0.55|1.00|1.14|1.41|
-|R<sup>95</sup>    |             0.98|             1.25|              1.56|0.48|0.88|1.00|1.24|
-|R<sup>99</sup>    |             0.79|             1.01|              1.26|0.39|0.71|0.81|1.00|
+|R<sub>95</sub>    |             0.98|             1.25|              1.56|0.48|0.88|1.00|1.24|
+|R<sub>99</sub>    |             0.79|             1.01|              1.26|0.39|0.71|0.81|1.00|
 
 > **Example 1**
-> 4" 5 shot group corresponds to R<sup>95</sup> = 4" * 2.45 / 3.07 = 4" * 0.8 = 3.2"
+> 4" 5 shot group corresponds to R<sub>95</sub> = 4" * 2.45 / 3.07 = 4" * 0.8 = 3.2"
 
 ### Best Group
 
@@ -72,7 +72,7 @@ Sometimes people report best group size rather than average group size. Let's do
 Note how noisy best group size is compared to average group size. Average of two groups has less noise (CV=0.19) than best of 10 groups (CV=0.20), and it takes 10 rounds rather than 50.
 
 > **Example 2** 
-> If the best of 10 five-shot groups measures 4", that corresponds to R<sup>95</sup> = 4" * 2.45 / 1.89 = 5.2". Compare this number to 3.2" from Example 1.
+> If the best of 10 five-shot groups measures 4", that corresponds to R<sub>95</sub> = 4" * 2.45 / 1.89 = 5.2". Compare this number to 3.2" from Example 1.
 
 > **Example 3** 
 > Averaging group sizes of two 5 shot groups works about as well as one 10 shot group size (in both cases CV is approximately 0.19).
@@ -81,13 +81,13 @@ Note how noisy best group size is compared to average group size. Average of two
 
 If accuracy is less than ideal, then group size alone does not mean much. 2" group 2' above the target is not particularly useful. But there is a way to estimate  hit probability that does not have this problem. It works by estimating CEP rather than group size.
 
-CEP stands for [Circular Error Probable](http://en.wikipedia.org/wiki/Circular_error_probable): minimum radius of a circle centered on the target that contains half the impacts. CEP is sometimes called R<sup>50</sup>. If we only care about precision we can center the circle about the mean, but then it won't help with hit probability.
+CEP stands for [Circular Error Probable](http://en.wikipedia.org/wiki/Circular_error_probable): minimum radius of a circle centered on the target that contains half the impacts. CEP is sometimes called R<sub>50</sub>. If we only care about precision we can center the circle about the mean, but then it won't help with hit probability.
 
 There are several ways to estimate CEP. The easiest two are median and Rayleigh estimators. Both look at *radial miss distances* - distances from the center of the target to the center of the impact.
 
 *Median CEP estimator* is the simplest one possible: rank order shots by radial miss distance, then take the median. For example, in a 5 shot group discard two impacts closest to the center of the target and two impacts furthest from the center of the target, then measure the distance between the center of the target and the center of remaining impact. This gives you estimated CEP.
 
-![Estimating CEP as median radial miss](images/cep.jpg?raw=true)
+![Estimating CEP as median radial miss](cep.jpg?raw=true)
 
 *Rayleigh CEP estimator* is a bit more work: measure all radial miss distances, take the average, then multiply it by sqrt((2 ln 4)/&pi;)&nbsp;&asymp;&nbsp;0.9394. This magic number comes from the observation that mean of Rayleigh distribution (that we just estimated by averaging radial miss distances) is &sigma;&nbsp;sqrt(&pi;&nbsp;/&nbsp;2&nbsp;) and CEP is median of this distribution, or &sigma;&nbsp;sqrt(&nbsp;ln&nbsp;4&nbsp;).
 
@@ -110,7 +110,7 @@ In practice, impact coordinates do not necessarily follow normal distribution. A
 |Standard normal     |               0.30|                 0.23|
 |Contaminated normal |               0.30|                 0.48|
 
-CV of median estimator did not budge, but CV of Rayleigh estimator doubled. So unless you are certain that the data follows normal distribution, it might be prudent to use a robust estimator such as the median.
+CV of median estimator did not budge, but CV of Rayleigh estimator doubled. The takeaway is that unless you are certain that the data follows normal distribution, it might be prudent to use a robust estimator such as the median.
 
 ### Median Group Size
 
@@ -122,13 +122,12 @@ Similar thing happens with group size: averaging works better with normal distri
 |Contaminated normal    |                 0.35|              0.22|                0.17|
 
 Distribution of group size is asymmetric, so median is not the same as mean. For standard normal, this difference is within
-2%, but can be larger for distributions with heavier tails
+2%, but can be larger for distributions with heavier tails.
 
 ### Rules of Thumb
 
 Assuming perfect zero:
 
-  + 1 cm CEP &asymp; 1" 5 shot group size
-  + 3 shot group size &asymp; R<sup>95</sup> &asymp; 2 * CEP
-  + 5 shot group size  &asymp; R<sup>99</sup>
+  + 3 shot group size &asymp; R<sub>95</sub> &asymp; 2 * CEP
+  + 5 shot group size  &asymp; R<sub>99</sub>
   + CEP in cm &asymp; 5 shot group size in inches (more precisely, 2.6 rather than 2.54)
