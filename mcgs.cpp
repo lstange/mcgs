@@ -6,9 +6,24 @@
 #include <vector>
 #include <cmath>
 #include <numeric>
-#include <random>
 #include <iostream>
 #include <stdlib.h>
+
+// *Really* minimal PCG32 code / (c) 2014 M.E. O'Neill / pcg-random.org
+// Licensed under Apache License 2.0 (NO WARRANTY, etc. see website)
+
+typedef struct { uint64_t state;  uint64_t inc; } pcg32_random_t;
+
+uint32_t pcg32_random_r(pcg32_random_t* rng)
+{
+    uint64_t oldstate = rng->state;
+    // Advance internal state
+    rng->state = oldstate * 6364136223846793005ULL + (rng->inc|1);
+    // Calculate output function (XSH RR), uses old state for max ILP
+    uint32_t xorshifted = ((oldstate >> 18u) ^ oldstate) >> 27u;
+    uint32_t rot = oldstate >> 59u;
+    return (xorshifted >> rot) | (xorshifted << ((-rot) & 31));
+}
 
 class ShotGroup {
   private:
@@ -114,11 +129,10 @@ class DescriptiveStat
     double s_;
 };
 
-static std::pair<double, double> pull_from_bivariate_normal(std::mt19937& gen, double deviation = 1.)
+static std::pair<double, double> pull_from_bivariate_normal(pcg32_random_t* prng, double deviation = 1.)
 {
-  std::uniform_real_distribution<> dis(0., 1.);
-  double u; do { u = dis(gen); } while (!u);
-  double v; do { v = dis(gen); } while (!v);
+  double u; do { u = ldexp(pcg32_random_r(prng), -32); } while (!u);
+  double v; do { v = ldexp(pcg32_random_r(prng), -32); } while (!v);
 
   // Box-Muller transform
   double r = deviation * sqrt(-2 * log(u));
@@ -151,8 +165,7 @@ int main(int argc, char* argv[])
     std::cerr << "Usage: mcgs experiments [[[[shots_in_group] groups_in_experiment] proportion_of_outliers] outlier_severity]\n";
     return -1;
   }
-  std::mt19937 prng(experiments);
-  std::uniform_real_distribution<> unit_distr(0., 1.);
+  pcg32_random_t prng = {0};
   int shots_in_group = 5;
   if (argc > 2) {
     shots_in_group = atoi(argv[2]);
@@ -191,10 +204,10 @@ int main(int argc, char* argv[])
       std::vector<double> r;
       for (int i = 0; i < shots_in_group; i++) {
         std::pair<double, double> p;
-        if (proportion_of_outliers > 0 && unit_distr(prng) < proportion_of_outliers) {
-          p = pull_from_bivariate_normal(prng, outlier_severity);
+        if (proportion_of_outliers > 0 && ldexp(pcg32_random_r(&prng), -32) < proportion_of_outliers) {
+          p = pull_from_bivariate_normal(&prng, outlier_severity);
         } else {
-          p = pull_from_bivariate_normal(prng);
+          p = pull_from_bivariate_normal(&prng);
         }
         double x = p.first;
         double y = p.second;
