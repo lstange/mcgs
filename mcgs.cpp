@@ -43,7 +43,7 @@ class ShotGroup {
     {
       double x = x_.at(a) - x_.at(b);
       double y = y_.at(a) - y_.at(b);
-      return sqrt(x * x + y * y);
+      return hypot(x, y);
     }
     
     double group_size(void) const
@@ -111,9 +111,7 @@ class ShotGroup {
       center_y /= y_.size();
       double amr = 0;
       for (int i = 0; i < x_.size(); i++) {
-        amr += sqrt( (x_.at(i) - center_x) * (x_.at(i) - center_x) 
-                   + (y_.at(i) - center_y) * (y_.at(i) - center_y)
-                   );
+        amr += hypot(x_.at(i) - center_x, y_.at(i) - center_y);
       }
       amr /= x_.size();
       return amr;
@@ -252,7 +250,7 @@ int main(int argc, char* argv[])
         }
         double x = p.first;
         double y = p.second;
-        double ri = sqrt(x * x + y * y);
+        double ri = hypot(x, y);
         g.add(x, y);
         r.push_back(ri);
 #ifdef ALL_ERR
