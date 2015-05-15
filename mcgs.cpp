@@ -80,6 +80,7 @@ class ShotGroup {
           }
         }
       }
+
       // Worst shot must be one of the impacts defining extreme spread.
       // Calculate group size without either one, return the smaller number.
       double best_so_far_excluding_a = 0;
