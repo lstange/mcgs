@@ -145,12 +145,14 @@ Distribution of group size is asymmetric, so median is not the same as mean. For
 
 ### Group Size Excluding Worst Shot
 
-This sounds like cheating, but in reality is a good robust statistic (less sensitive to occasional fliers). To avoid bias excluding the worst shot needs to be done for *all* groups, not just the ones with obvious outliers. To compare with regular group size:
+This sounds like cheating, but in reality it is a good, robust statistic (less sensitive to occasional fliers). To avoid bias, excluding the worst shot needs to be done for *all* groups, not just the ones with obvious outliers.
+
+To compare with regular group size:
 
   + After excluding worst shot in a 5 shot group, multiply the result by 1.5 to get regular five-shot group size 
   + Group size after excluding the worst shot in a 10-shot group is approximately the same as regular five-shot group size
 
-### Rules of Thumb
+### tl,dr Rules of Thumb
 
 Assuming perfect zero:
 
