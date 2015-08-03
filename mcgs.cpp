@@ -60,6 +60,56 @@ class ShotGroup {
       }
       return best_so_far;
     }
+    
+    // As per NSD (page 181) should be within 15 cm at 100 m
+    double nsd_kuchnost(void) const
+    {
+      // Only defined for 4 shot groups
+      if (x_.size() != 4) return  std::numeric_limits<double>::quiet_NaN();
+      
+      // Find STP using all 4 shots
+      double stp_x = (x_.at(0) + x_.at(1) + x_.at(2) + x_.at(3)) / 4;
+      double stp_y = (y_.at(0) + y_.at(1) + y_.at(2) + y_.at(3)) / 4;
+      
+      // Find minimum radius of circle with center at STP that encloses all shots 
+      double r = 0;
+      for (unsigned i = 0; i < 4; i++) {
+        double candidate = hypot(stp_x - x_.at(i), stp_y - y_.at(i));
+        if (r < candidate) {
+          r = candidate;
+        }
+      }
+      
+      // Exclude outlier, if any
+      for (unsigned i = 0; i < 4; i++) {
+      
+        // STP excluding this shot
+        double stp3_x = (stp_x * 4 - x_.at(i)) / 3;
+        double stp3_y = (stp_y * 4 - y_.at(i)) / 3;
+        
+        // Minimum radius of circle with center at STP of three shots excluding this shot
+        double r2 = 0;
+        for (unsigned j = 0; j < 4; j++) {
+          if (i == j) {
+            continue;
+          }
+          double candidate = hypot(stp_x - x_.at(j), stp_y - y_.at(j));
+          if (r2 < candidate) {
+            r2 = candidate;
+          }
+        }
+
+        // Outlier is a shot 2.5x or more distant from STP of other three shots
+        // than radius of the circle centered as STP of other three shots
+        // that covers these three shots
+        if (hypot(stp3_x - x_.at(i), stp3_y - y_.at(i)) > 2.5 * r2 && r > r2) {
+          r = r2;
+        }
+      }
+      
+      // Diameter
+      return 2 * r;
+    }
 
     double group_size_excluding_worst(void) const
     {
@@ -232,6 +282,7 @@ int main(int argc, char* argv[])
   }
   const double rayleigh_cep_factor = sqrt(4 * log(2) / M_PI); // 0.9394
   DescriptiveStat gs_s, gs_s2, bgs_s, ags_s, ags_s2, mgs_s, wgs_s, amr_s, aamr_s, rayleigh_s, median_r_s;
+  DescriptiveStat nsd_s;
 #ifdef ALL_ERR
   std::vector<double> all_r;
 #endif
@@ -261,6 +312,9 @@ int main(int argc, char* argv[])
 
       double this_gs = g.group_size();
       gs_s.push(this_gs);
+      if (shots_in_group == 4) {
+        nsd_s.push(g.nsd_kuchnost());
+      }
       double minus1 = g.group_size_excluding_worst();
       gs_s2.push(minus1);
       gs2.push(minus1);
@@ -296,6 +350,9 @@ int main(int argc, char* argv[])
     aamr_s.push(amr.mean());
   }
   gs_s.show("Group size:");
+  if (shots_in_group == 4) {
+    nsd_s.show("Kuchnost:");
+  }
   gs_s2.show("Group size (excluding worst shot in group):");
   if (groups_in_experiment > 1) {
     bgs_s.show("Best group size:");
