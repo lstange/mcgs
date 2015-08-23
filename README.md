@@ -112,9 +112,28 @@ In practice, impact coordinates do not necessarily follow normal distribution. A
 
 CV of median estimator did not budge, but CV of Rayleigh estimator doubled. The takeaway is that unless you are certain that the data follows normal distribution, it might be prudent to use a robust estimator such as the median.
 
+### Optimal Number of Shots in Group
+
+Assuming normal distribution, optimal number of shots per group is 6. That said, the difference between 5 and 6 is very small, and 5 is more convenient.
+
+The following table shows CV of average group size from 2,520 shots broken down in different number of groups.
+
+|Shots in group|Groups| Shots |   CV    |    |
+|-------------:| ----:|------:|--------:|:---|
+|            3 | 840  | 2,520 | 0.01281 | IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII|
+|            4 | 630  | 2,520 | 0.01221 | IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII|
+|            5 | 504  | 2,520 | 0.01204 | IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII|
+|            6 | 420  | 2,520 | 0.01197 | IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII|
+|            7 | 360  | 2,520 | 0.01201 | IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII|
+|            8 | 315  | 2,520 | 0.01208 | IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII|
+|            9 | 280  | 2,520 | 0.01217 | IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII|
+|           10 | 252  | 2,520 | 0.01226 | IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII|
+
+In presence of outliers, such as with contaminated normal distribution, CV simply grows with number of shots in group. This happens because probability of catching an outlier in a group is proportional to number of shots in group.
+
 ### Median Group Size
 
-Similar thing happens with group size: averaging works better with normal distribution, median is better for contaminated normal.
+Averaging works better with normal distribution, but median is better for contaminated normal.
 
 |5 groups, 5 shots each |Average Group Size CV|Best Group Size CV|Median Group Size CV|
 |-----------------------|--------------------:|-----------------:|-------------------:|
@@ -124,10 +143,19 @@ Similar thing happens with group size: averaging works better with normal distri
 Distribution of group size is asymmetric, so median is not the same as mean. For standard normal, this difference is within
 2%, but can be larger for distributions with heavier tails.
 
-### Rules of Thumb
+### Group Size Excluding Worst Shot
+
+This sounds like cheating, but in reality it is a good, robust statistic (less sensitive to occasional fliers). To avoid bias, excluding the worst shot needs to be done for *all* groups, not just the ones with obvious outliers.
+
+To compare with regular group size:
+
+  + After excluding worst shot in a 5 shot group, multiply the result by 1.5 to get regular five-shot group size 
+  + Group size after excluding the worst shot in a 10-shot group is approximately the same as regular five-shot group size
+
+### tl,dr Rules of Thumb
 
 Assuming perfect zero:
 
   + 3 shot group size &asymp; R<sub>95</sub> &asymp; 2 * CEP
   + 5 shot group size  &asymp; R<sub>99</sub>
-  + CEP in cm &asymp; 5 shot group size in inches (more precisely, 2.6 rather than 2.54)
+  + CEP in cm &asymp; 5 shot group size in inches (more precisely, coefficient is 2.6 rather than 2.54)
