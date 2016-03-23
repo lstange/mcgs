@@ -29,12 +29,25 @@ AMR is average miss radius, measured from the mean point of impact of the group.
 | 10 shots  | 1.19 | 0.17 |
 | 100 shots | 1.25 | 0.05 |
 
-### Target Radius
+### Kuchnost
+
+Accuracy metric used by the Soviets and described in their NSD (*Nastavlenie po Strelkovomu delu*). It is based on four shots and calculated as follows:
+
+* Find mean point of impact of the four shots
+* Using this point as the center, find minimum radius of circle that encloses all shots
+* Unless there is an outlier, in which case discard the outlier an repeat the procedure
+with the three remaining shots. 
+
+Outlier is a shot 2.5 times or more distant from mean point of impact of the other three shots than any of these three shots.
+
+Page 181 of NSD states that AKM should be within 15 cm at 100 m, which corresponds to 4.56 MOA average 5-shot group size. 
+
+### Miss Radius
 
 Radial miss distances for bivariate normal distribution follow [Rayleigh distribution](http://en.wikipedia.org/wiki/Rayleigh_distribution). The radius of a circle containing centers of given proportion of shots can be calculated analytically:
 
-|             |      Exact          | Approximate |
-|-------------|---------------------|------------:|
+|                        |      Exact          | Approximate |
+|------------------------|---------------------|------------:|
 | R<sub>50</sub> aka CEP | `sqrt(-2*ln(0.5))`  |        1.18 |
 | R<sub>90</sub>         | `sqrt(-2*ln(0.1))`  |        2.15 |
 | R<sub>95</sub>         | `sqrt(-2*ln(0.05))` |        2.45 |
@@ -87,6 +100,8 @@ There are several ways to estimate CEP. The easiest two are median and Rayleigh 
 
 *Median CEP estimator* is the simplest one possible: rank order shots by radial miss distance, then take the median. For example, in a 5 shot group discard two impacts closest to the center of the target and two impacts furthest from the center of the target, then measure the distance between the center of the target and the center of remaining impact. This gives you estimated CEP.
 
+Median estimator is non-parametric (it does not rely on assumptions about underlying distributions) and is robust (not very sensitive to outliers). It's slightly biased up, especially for small groups, but the bias is in the third significant digit so probably won't be visible in presence of mush stronger noise.
+
 ![Estimating CEP as median radial miss](cep.jpg?raw=true)
 
 *Rayleigh CEP estimator* is a bit more work: measure all radial miss distances, take the average, then multiply it by sqrt((2 ln 4)/&pi;)&nbsp;&asymp;&nbsp;0.9394. This magic number comes from the observation that mean of Rayleigh distribution (that we just estimated by averaging radial miss distances) is &sigma;&nbsp;sqrt(&pi;&nbsp;/&nbsp;2&nbsp;) and CEP is median of this distribution, or &sigma;&nbsp;sqrt(&nbsp;ln&nbsp;4&nbsp;).
@@ -99,7 +114,7 @@ There are several ways to estimate CEP. The easiest two are median and Rayleigh 
 
 In this simulation CV of Rayleigh estimator is consistently lower, but that's to be expected. Rayleigh estimator is parametric - it assumes the data follows a certain distribution, and in case of our Monte Carlo simulation that's certainly true. If shots follow a different distribution, especially one with heavy tails, the picture can be different.
 
-Median estimator is non-parametric (it does not rely on assumptions about underlying distributions) and is more robust (less sensitive to outliers).
+*Maximum likelihood CEP estimator* is even more work: sum squares of all radial miss distances, take square root, then multiply by [ugly adjustment factor](https://en.wikipedia.org/wiki/Rayleigh_distribution#Parameter_estimation) `sqrt(ln(2)/&pi;)*power(4,N)*N!*(N-1)!/(2*N)!` that depends on number of shots N. In theory it's slightly better than Rayleigh estimator, but even more sensitive to outliers.
 
 ### Contaminated Normal Distribution
 
@@ -112,9 +127,28 @@ In practice, impact coordinates do not necessarily follow normal distribution. A
 
 CV of median estimator did not budge, but CV of Rayleigh estimator doubled. The takeaway is that unless you are certain that the data follows normal distribution, it might be prudent to use a robust estimator such as the median.
 
+### Optimal Number of Shots in Group
+
+Assuming normal distribution, optimal number of shots per group is 6. That said, the difference between 5 and 6 is very small, and 5 is more convenient.
+
+The following table shows CV of average group size from 2,520 shots broken down in different number of groups.
+
+|Shots in group|Groups| Shots |   CV    |    |
+|-------------:| ----:|------:|--------:|:---|
+|            3 | 840  | 2,520 | 0.01281 | IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII|
+|            4 | 630  | 2,520 | 0.01221 | IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII|
+|            5 | 504  | 2,520 | 0.01204 | IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII|
+|            6 | 420  | 2,520 | 0.01197 | IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII|
+|            7 | 360  | 2,520 | 0.01201 | IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII|
+|            8 | 315  | 2,520 | 0.01208 | IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII|
+|            9 | 280  | 2,520 | 0.01217 | IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII|
+|           10 | 252  | 2,520 | 0.01226 | IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII|
+
+In presence of outliers, such as with contaminated normal distribution, CV simply grows with number of shots in group. This happens because probability of catching an outlier in a group is proportional to number of shots in group.
+
 ### Median Group Size
 
-Similar thing happens with group size: averaging works better with normal distribution, median is better for contaminated normal.
+Averaging works better with normal distribution, but median is better for contaminated normal.
 
 |5 groups, 5 shots each |Average Group Size CV|Best Group Size CV|Median Group Size CV|
 |-----------------------|--------------------:|-----------------:|-------------------:|
@@ -124,10 +158,19 @@ Similar thing happens with group size: averaging works better with normal distri
 Distribution of group size is asymmetric, so median is not the same as mean. For standard normal, this difference is within
 2%, but can be larger for distributions with heavier tails.
 
-### Rules of Thumb
+### Group Size Excluding Worst Shot
+
+This sounds like cheating, but in reality it is a good, robust statistic (less sensitive to occasional fliers). To avoid bias, excluding the worst shot needs to be done for *all* groups, not just the ones with obvious outliers.
+
+To compare with regular group size:
+
+  + After excluding worst shot in a 5 shot group, multiply the result by 1.45 to get regular five-shot group size 
+  + Group size after excluding the worst shot in a 10-shot group is approximately the same as regular five-shot group size
+
+### tl,dr Rules of Thumb
 
 Assuming perfect zero:
 
   + 3 shot group size &asymp; R<sub>95</sub> &asymp; 2 * CEP
   + 5 shot group size  &asymp; R<sub>99</sub>
-  + CEP in cm &asymp; 5 shot group size in inches (more precisely, 2.6 rather than 2.54)
+  + CEP in cm &asymp; 5 shot group size in inches (more precisely, coefficient is 2.6 rather than 2.54)
