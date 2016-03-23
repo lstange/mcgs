@@ -104,7 +104,7 @@ Median estimator is non-parametric (it does not rely on assumptions about underl
 
 ![Estimating CEP as median radial miss](cep.jpg?raw=true)
 
-*Rayleigh CEP estimator* is a bit more work: measure all radial miss distances, take the average, then multiply it by sqrt((2 ln 4)/&pi;)&nbsp;&asymp;&nbsp;0.9394. This magic number comes from the observation that mean of Rayleigh distribution (that we just estimated by averaging radial miss distances) is &sigma;&nbsp;sqrt(&pi;&nbsp;/&nbsp;2&nbsp;) and CEP is median of this distribution, or &sigma;&nbsp;sqrt(&nbsp;ln&nbsp;4&nbsp;).
+*Rayleigh CEP estimator* is a bit more work: measure all radial miss distances, take the average, then multiply it by sqrt((2 ln 4)/Pi)&nbsp;&asymp;&nbsp;0.9394. This magic number comes from the observation that mean of Rayleigh distribution (that we just estimated by averaging radial miss distances) is &sigma;&nbsp;sqrt(&pi;&nbsp;/&nbsp;2&nbsp;) and CEP is median of this distribution, or &sigma;&nbsp;sqrt(&nbsp;ln&nbsp;4&nbsp;).
 
 |             |Median Estimator Mean|Median Estimator CV|Rayleigh Estimator Mean|Rayleigh Estimator CV|
 |-------------|--------------------:|------------------:|----------------------:|--------------------:|
@@ -167,7 +167,7 @@ To compare with regular group size:
   + After excluding worst shot in a 5 shot group, multiply the result by 1.45 to get regular five-shot group size 
   + Group size after excluding the worst shot in a 10-shot group is approximately the same as regular five-shot group size
 
-### tl,dr Rules of Thumb
+### tl,dr: Rules of Thumb
 
 Assuming perfect zero:
 
