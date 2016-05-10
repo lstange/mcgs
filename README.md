@@ -116,6 +116,20 @@ In this simulation CV of Rayleigh estimator is consistently lower, but that's to
 
 *Maximum likelihood CEP estimator* is even more work: sum squares of all radial miss distances, take square root, then multiply by [ugly adjustment factor](https://en.wikipedia.org/wiki/Rayleigh_distribution#Parameter_estimation) `sqrt(ln(2)/&pi;)*power(4,N)*N!*(N-1)!/(2*N)!` that depends on number of shots N. In theory it's slightly better than Rayleigh estimator, but even more sensitive to outliers.
 
+### Estimating R<sub>90</sub> from a Single Order Statistic
+
+R<sup>m:n</sup> stands for "*m*th smallest miss radius in a group of n shots". For small
+groups using the worst miss radius results in lowest variance, while second worst miss radius works better for larger groups. The latter is also less sensitive to fliers.
+
+|  Shots | R<sub>90</sub>         |
+|-------:|------------------------|
+|       1| 3 R<sub>1:1</sub>      |
+|       2| 1.732 R<sub>2:2</sub>  |
+|       3| 1.414 R<sub>3:3</sub>  |
+|       5| 1.172 R<sub>5:5</sub>  |
+|       8| 1.281 R<sub>7:8</sub>  |
+|      10| 1.187 R<sub>9:10</sub> |
+
 ### Contaminated Normal Distribution
 
 In practice, impact coordinates do not necessarily follow normal distribution. A canonical example is contaminated normal distribution: a mixture of a standard normal distribution and a normal distribution with a different variance. It might simulate shooter errors or other rare events. In the following example 1% of shots were pulled from the distribution with 10 times higher standard deviation.
@@ -166,20 +180,6 @@ To compare with regular group size:
   + After excluding worst shot in a 5 shot group, multiply the result by 1.45 to get regular five-shot group size 
   + Group size after excluding the worst shot in a 10-shot group is approximately the same as regular five-shot group size
 
-### Estimating R<sup>90</sup> from a Single Order Statistic
-
-R<sup>m:n</sup> stands for "*m*th smallest miss radius in a group of n shots". For small
-groups using the worst miss radius results in lowest variance, while second worst miss radius works better for larger groups. The latter is also less sensitive to fliers.
-
-|  Shots | R<sup>90</sup>         |
-|-------:|------------------------|
-|       1| 3 R<sup>1:1</sup>      |
-|       2| 1.732 R<sup>2:2</sup>  |
-|       3| 1.414 R<sup>3:3</sup>  |
-|       5| 1.172 R<sup>5:5</sup>  |
-|       8| 1.281 R<sup>7:8</sup>  |
-|      10| 1.187 R<sup>9:10</sup> |
-
 ### tl,dr: Rules of Thumb
 
 Assuming perfect zero:
@@ -187,5 +187,5 @@ Assuming perfect zero:
   + 3 shot group size is about the same as R<sub>95</sub>, or twice the CEP
   + 5 shot group size is about the same as R<sub>99</sub>
   + CEP in cm is about the same as 5 shot group size in inches (more precisely, coefficient is 2.6 rather than 2.54)
-  + R<sup>90</sup> is about 1.2 times larger than worst miss radius in a five-shot group
-  + R<sup>90</sup> is about 1.2 times larger than second worst miss radius in a ten-shot group
+  + R<sub>90</sub> is about 1.2 times larger than worst miss radius in a five-shot group
+  + R<sub>90</sub> is about 1.2 times larger than second worst miss radius in a ten-shot group
