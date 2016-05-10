@@ -155,8 +155,7 @@ Averaging works better with normal distribution, but median is better for contam
 |Standard normal        |                 0.12|              0.21|                0.15|
 |Contaminated normal    |                 0.35|              0.22|                0.17|
 
-Distribution of group size is asymmetric, so median is not the same as mean. For standard normal, this difference is within
-2%, but can be larger for distributions with heavier tails.
+Distribution of group size is asymmetric, so median is not the same as mean. For standard normal, this difference is within 2%, but can be larger for distributions with heavier tails.
 
 ### Group Size Excluding Worst Shot
 
@@ -167,10 +166,26 @@ To compare with regular group size:
   + After excluding worst shot in a 5 shot group, multiply the result by 1.45 to get regular five-shot group size 
   + Group size after excluding the worst shot in a 10-shot group is approximately the same as regular five-shot group size
 
+### Estimating R<sup>90</sup> from a Single Order Statistic
+
+R<sup>m:n</sup> stands for "*m*th smallest miss radius in a group of n shots". For small
+groups using the worst miss radius results in lowest variance, while second worst miss radius works better for larger groups. The latter is also less sensitive to fliers.
+
+|  Shots | R<sup>90</sup>         |
+|-------:|------------------------|
+|       1| 3 R<sup>1:1</sup>      |
+|       2| 1.732 R<sup>2:2</sup>  |
+|       3| 1.414 R<sup>3:3</sup>  |
+|       5| 1.172 R<sup>5:5</sup>  |
+|       8| 1.281 R<sup>7:8</sup>  |
+|      10| 1.187 R<sup>9:10</sup> |
+
 ### tl,dr: Rules of Thumb
 
 Assuming perfect zero:
 
-  + 3 shot group size &asymp; R<sub>95</sub> &asymp; 2 * CEP
-  + 5 shot group size  &asymp; R<sub>99</sub>
-  + CEP in cm &asymp; 5 shot group size in inches (more precisely, coefficient is 2.6 rather than 2.54)
+  + 3 shot group size is about the same as R<sub>95</sub>, or twice the CEP
+  + 5 shot group size is about the same as R<sub>99</sub>
+  + CEP in cm is about the same as 5 shot group size in inches (more precisely, coefficient is 2.6 rather than 2.54)
+  + R<sup>90</sup> is about 1.2 times larger than worst miss radius in a five-shot group
+  + R<sup>90</sup> is about 1.2 times larger than second worst miss radius in a ten-shot group
