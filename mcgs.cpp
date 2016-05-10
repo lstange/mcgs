@@ -9,8 +9,6 @@
 #include <iostream>
 #include <stdlib.h>
 
-//#define ALL_ERR
-
 // *Really* minimal PCG32 code / (c) 2014 M.E. O'Neill / pcg-random.org
 // Licensed under Apache License 2.0 (NO WARRANTY, etc. see website)
 
@@ -169,6 +167,78 @@ class ShotGroup {
       amr /= x_.size();
       return amr;
     }
+    
+    double worst_miss_radius(void) const
+    {
+      double max_r = 0;
+      for (int i = 0; i < x_.size(); i++) {
+        double r = hypot(x_.at(i), y_.at(i));
+        if (max_r < r) {
+          max_r = r;
+        }
+      }
+      return max_r;
+    }
+
+    double second_worst_miss_radius(void) const
+    {
+      double max_r = 0;
+      int max_i = 0;
+      for (int i = 0; i < x_.size(); i++) {
+        double r = hypot(x_.at(i), y_.at(i));
+        if (max_r < r) {
+          max_r = r;
+          max_i = i;
+        }
+      }
+      double second_r = 0;
+      for (int i = 0; i < x_.size(); i++) {
+        if (i == max_i) {
+          continue;
+        }
+        double r = hypot(x_.at(i), y_.at(i));
+        if (second_r < r) {
+          second_r = r;
+        }
+      }
+      return second_r;
+    }
+
+    double third_worst_miss_radius(void) const
+    {
+      double max_r = 0;
+      int max_i = 0;
+      for (int i = 0; i < x_.size(); i++) {
+        double r = hypot(x_.at(i), y_.at(i));
+        if (max_r < r) {
+          max_r = r;
+          max_i = i;
+        }
+      }
+      double second_r = 0;
+      int second_i = 0;
+      for (int i = 0; i < x_.size(); i++) {
+        if (i == max_i) {
+          continue;
+        }
+        double r = hypot(x_.at(i), y_.at(i));
+        if (second_r < r) {
+          second_r = r;
+          second_i = i;
+        }
+      }
+      double third_r = 0;
+      for (int i = 0; i < x_.size(); i++) {
+        if (i == max_i || i == second_i) {
+          continue;
+        }
+        double r = hypot(x_.at(i), y_.at(i));
+        if (third_r < r) {
+          third_r = r;
+        }
+      }
+      return third_r;
+    }
 };
 
 class DescriptiveStat
@@ -209,8 +279,12 @@ class DescriptiveStat
       return n_;
     }
 
-    void show(const char* metric) {
-      std::cout << metric << " mean=" << mean() << ", CV=" << stdev() / mean() << "\n";
+    void show(const char* metric, double theoretical = 0) {
+      std::cout << metric << " mean=" << mean(); 
+      if (theoretical > 0) {
+        std::cout << " (cf. " << theoretical << ")";
+      }      
+      std::cout << ", CV=" << stdev() / mean() << "\n";
     }
 
   private:
@@ -294,14 +368,15 @@ int main(int argc, char* argv[])
   }
 
   DescriptiveStat gs_s, gs_s2, bgs_s, ags_s, ags_s2, mgs_s, wgs_s, amr_s, aamr_s, rayleigh_s, median_r_s;
-  DescriptiveStat rayleigh_mle;
-  DescriptiveStat nsd_s;
-#ifdef ALL_ERR
-  std::vector<double> all_r;
-#endif
-  while (experiments --> 0) {
+  DescriptiveStat rayleigh_mle, worst_r_s, second_worst_r_s, third_worst_r_s;
+  DescriptiveStat nsd_s, wr_s, swr_s, twr_s;
+  int hits_within_double_median = 0;
+  int hits_within_r90hat = 0;
+  double double_med = 0;
+  double r90hat = 0;
+  for (int experiment = 0; experiment < experiments; experiment++) {
     double best_gs = 0, worst_gs = 0;
-    DescriptiveStat gs, gs2, amr;
+    DescriptiveStat gs, gs2, amr, wr, swr, twr;
     std::vector<double> gsg_v;
     for (int j = 0; j < groups_in_experiment; j++) { 
       ShotGroup g; 
@@ -320,9 +395,6 @@ int main(int argc, char* argv[])
         g.add(x, y);
         r.push_back(ri);
         r2.push_back(ri*ri);
-#ifdef ALL_ERR
-        all_r.push_back(ri);
-#endif
       }
 
       double this_gs = g.group_size();
@@ -354,16 +426,66 @@ int main(int argc, char* argv[])
       double rayleigh = rayleigh_cep_factor * accumulate(r.begin(), r.end(), 0.);
       rayleigh_s.push(rayleigh);
       rayleigh_mle.push(rayleigh_mle_factor * sqrt(accumulate(r2.begin(), r2.end(), 0.)));
-      median_r_s.push(median(r));
+      
+      double this_wr = g.worst_miss_radius();
+      wr.push(this_wr);
+      worst_r_s.push(this_wr);
+      
+      double this_swr = g.second_worst_miss_radius();
+      swr.push(this_swr);
+      second_worst_r_s.push(this_swr);
+      
+      double this_twr = g.third_worst_miss_radius();
+      twr.push(this_twr);
+      third_worst_r_s.push(this_twr);
+      
+      double med = median(r);
+      median_r_s.push(med);
+      
+      // Use R90 estimates based on previous group to avoid correlation
+      if (!(experiment == 0 && j == 0)) { // If there is a prior group
+        for (int i = 0; i < shots_in_group; i++) {
+          if (r.at(i) < double_med) {
+            hits_within_double_median++;
+          }
+          if (r.at(i) < r90hat) {
+            hits_within_r90hat++;
+          }
+        }
+      }
+      switch (shots_in_group) {
+        case  1: // wxMaxima: find_root(integrate(x*exp(-x^2/2)*exp(-x^2*k^2/2), x, 0, inf)=1-0.9, k, 1, 10);
+          r90hat = this_wr * 3;
+          break;
+        case  2: // wxMaxima: find_root(integrate(2*(1-exp(-x^2/2))*x*exp(-x^2/2)*exp(-x^2*k^2/2), x, 0, inf)=1-0.9, k, 1, 10); 
+          r90hat = this_wr * 1.732050807568877;
+          break;
+        case  3: // wxMaxima: find_root(integrate(3*x*(1-exp(-x^2/2))^2*exp(-x^2/2-k^2*x^2/2), x, 0, inf)=1-0.9, k, 1, 10);
+          r90hat = this_wr * 1.414213562373095;
+          break;
+        case  5: // wxMaxima: find_root(integrate(5*x*(1-exp(-x^2/2))^4*exp(-x^2/2-k^2*x^2/2), x, 0, inf)=1-0.9, k, 1, 10);
+          r90hat = this_wr  * 1.17215228421396;
+          break;
+        case  8: // wxMaxima: find_root(integrate(56*x*(1-exp(-x^2/2))^6*exp(-x^2-k^2*x^2/2), x, 0, inf)=1-0.9, k, 1, 10);
+          r90hat = this_swr * 1.281217078686304;
+          break;
+        case 10: // wxMaxima: find_root(integrate(90*x*(1-exp(-x^2/2))^8*exp(-x^2-k^2*x^2/2), x, 0, inf)=1-0.9, k, 1, 10);
+          r90hat = this_swr * 1.187140545277712;
+          break;
+      }
+      double_med = med * 2;
     }
-    bgs_s.push(best_gs);
-    ags_s.push(gs.mean());
-    ags_s2.push(gs2.mean());
     if (groups_in_experiment > 1) {
+      bgs_s.push(best_gs);
+      ags_s.push(gs.mean());
+      ags_s2.push(gs2.mean());
       mgs_s.push(median(gsg_v));
+      wgs_s.push(worst_gs);
+      aamr_s.push(amr.mean());
+      wr_s.push(wr.mean());
+      swr_s.push(swr.mean());
+      twr_s.push(twr.mean());
     }
-    wgs_s.push(worst_gs);
-    aamr_s.push(amr.mean());
   }
   std::cout << "--- One " << shots_in_group << "-shot group ---\n";
   gs_s.show("Group size:");
@@ -372,26 +494,81 @@ int main(int argc, char* argv[])
   }
   gs_s2.show("Group size (excluding worst shot in group):");
   amr_s.show("Average Miss Radius:");
-  rayleigh_s.show("Rayleigh CEP estimator:");
-  rayleigh_mle.show("Maximum likelihood CEP estimator:");
-  median_r_s.show("Median CEP estimator:");
+  double theoretical_cep = 0;
   if (proportion_of_outliers == 0) {
-    std::cout << "Theoretical CEP: " << sqrt(-2*log(0.5)) << "\n";
+    theoretical_cep =  sqrt(-2*log(0.5));
   }
-#ifdef ALL_ERR
-  std::vector<double>::iterator all_r50_it = all_r.begin() + all_r.size() / 2; 
-  nth_element(all_r.begin(), all_r50_it, all_r.end());
-  std::vector<double>::iterator all_r90_it = all_r.begin() + all_r.size() - all_r.size() / 10; 
-  nth_element(all_r.begin(), all_r90_it, all_r.end());
-  std::vector<double>::iterator all_r95_it = all_r.begin() + all_r.size() - all_r.size() / 20; 
-  nth_element(all_r.begin(), all_r95_it, all_r.end());
-  std::vector<double>::iterator all_r99_it = all_r.begin() + all_r.size() - all_r.size() / 100; 
-  nth_element(all_r.begin(), all_r99_it, all_r.end());
-  std::cout << "Observed R50=" << *all_r50_it << ", R90=" << *all_r90_it << ", R95=" << *all_r95_it << ", R99=" << *all_r99_it << "\n";
+  rayleigh_s.show("Rayleigh CEP estimator:", theoretical_cep);
+  rayleigh_mle.show("Maximum likelihood CEP estimator:", theoretical_cep);
+  median_r_s.show("Median CEP estimator:"); // Not showing theoretical_cep because median has known bias
+  double theoretical_worst = 0;
   if (proportion_of_outliers == 0) {
-    std::cout << "Expected R50=" << sqrt(-2*log(0.5)) << ", R90=" << sqrt(-2*log(0.1)) << ", R95=" << sqrt(-2*log(0.05)) << ", R99=" << sqrt(-2*log(0.01)) << "\n";
+    switch (shots_in_group) {
+      case 2:
+        theoretical_worst = (2 * sqrt(2) - 1) * sqrt(M_PI) / 2;
+        break;
+      case 3:
+        theoretical_worst = (-9 + 9 * sqrt(2) + sqrt(6)) * sqrt(M_PI) / 6;
+        break;
+      case 5:
+        theoretical_worst =(-300 + 75 * sqrt(2) + 100 * sqrt(6) + 6 * sqrt(10)) * sqrt(M_PI) / 60;
+        break;
+    }
   }
-#endif
+  worst_r_s.show("Worst miss radius:", theoretical_worst);
+  double theoretical_second_worst = 0;
+  if (proportion_of_outliers == 0) {
+    switch (shots_in_group) {
+      case 5:
+        theoretical_second_worst =
+          ( 300 
+          + 225 * sqrt(2) 
+          - 200 * sqrt(6) 
+          -  24 * sqrt(10) 
+          ) * sqrt(M_PI) / 60;
+        break;
+      case 8:
+        theoretical_second_worst =
+          ( 6615 
+          + 22050 * sqrt(2) 
+          +  9800 * sqrt(3) 
+          -  7840 * sqrt(6) 
+          -  9408 * sqrt(10) 
+          -  1440 * sqrt(14)
+          ) * sqrt(M_PI) / 420;
+        break;
+      case 10:
+        theoretical_second_worst =
+          ( 42525 
+          + 60550 * sqrt(2) 
+          + 73500 * sqrt(3) 
+          +   378 * sqrt(5) 
+          - 16800 * sqrt(6) 
+          - 42336 * sqrt(10) 
+          - 21600 * sqrt(14)
+          ) * sqrt(M_PI) / 420;
+        break;
+    }
+  }
+  second_worst_r_s.show("Second worst miss radius:", theoretical_second_worst);
+  double theoretical_third_worst = 0;
+  if (proportion_of_outliers == 0) {
+    switch (shots_in_group) {
+      case 5:
+        theoretical_third_worst = (-225 + 100 * sqrt(3) +  36 * sqrt(5)) * sqrt(M_PI / 2) / 30;
+        break;
+    }
+  }
+  third_worst_r_s.show("Third worst miss radius:", theoretical_third_worst);
+  std::cout << "Percent of hits within double median radius: " << 100. * hits_within_double_median / shots_in_group / ((double)groups_in_experiment * experiments - 1) << "%\n";
+  switch (shots_in_group) {
+    case 1: case 2: case 3: case 5: 
+      std::cout << "Percent of hits within R90hat based on worst miss radius: " << 100. * hits_within_r90hat / shots_in_group / ((double)groups_in_experiment * experiments - 1) << "%\n";
+      break;
+    case 8: case 10:
+      std::cout << "Percent of hits within R90hat based on second worst miss radius: " << 100. * hits_within_r90hat / shots_in_group / ((double)groups_in_experiment * experiments - 1) << "%\n";
+      break;
+  }
   if (groups_in_experiment > 1) {
     std::cout << "--- Aggregate of " << groups_in_experiment << " " << shots_in_group << "-shot groups ---\n";
     bgs_s.show("Best group size:");
@@ -400,6 +577,9 @@ int main(int argc, char* argv[])
     mgs_s.show("Median group size:");
     wgs_s.show("Worst group size:");
     aamr_s.show("Average of AMR of groups:");
+    wr_s.show("Average worst miss radius:");
+    swr_s.show("Average second worst miss radius:");
+    twr_s.show("Average third worst miss radius:");
   }  
   return 0;
 }
