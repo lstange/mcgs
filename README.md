@@ -114,11 +114,11 @@ Median estimator is non-parametric (it does not rely on assumptions about underl
 
 In this simulation CV of Rayleigh estimator is consistently lower, but that's to be expected. Rayleigh estimator is parametric - it assumes the data follows a certain distribution, and in case of our Monte Carlo simulation that's certainly true. If shots follow a different distribution, especially one with heavy tails, the picture can be different.
 
-*Maximum likelihood CEP estimator* is even more work: sum squares of all radial miss distances, take square root, then multiply by [ugly adjustment factor](https://en.wikipedia.org/wiki/Rayleigh_distribution#Parameter_estimation) `sqrt(ln(2)/&pi;)*power(4,N)*N!*(N-1)!/(2*N)!` that depends on number of shots N. In theory it's slightly better than Rayleigh estimator, but even more sensitive to outliers.
+*Maximum likelihood CEP estimator* is even more work: sum squares of all radial miss distances, take square root, then multiply by [ugly adjustment factor](https://en.wikipedia.org/wiki/Rayleigh_distribution#Parameter_estimation) `sqrt(ln(2)/`&pi;`)*power(4,N)*N!*(N-1)!/(2*N)!` that depends on number of shots N. In theory it's slightly better than Rayleigh estimator, but even more sensitive to outliers.
 
 ### Estimating R<sub>90</sub> from a Single Order Statistic
 
-R<sup>m:n</sup> stands for "*m*th smallest miss radius in a group of n shots". For small
+R<sub>M:N</sub> stands for "*M*th smallest miss radius in a group of N shots". For small
 groups using the worst miss radius results in lowest variance, while second worst miss radius works better for larger groups. The latter is also less sensitive to fliers.
 
 |  Shots | R<sub>90</sub>         |
