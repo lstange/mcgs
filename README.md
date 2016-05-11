@@ -133,7 +133,7 @@ The following table shows conversion factors for Rayleigh distribution.
 
 R<sub>M:N</sub> stands for "*M*th smallest miss radius in a group of N shots". For example, R<sub>5:5</sub> is the worst miss radius in a five shot group, and R<sub>9:10</sub> is second worst miss radius in a ten shot group.
 
-For example, to estimate R<sub>90</sub> (the radius that will include 90% of impacts) take R<sub>5:5</sub> or R<sub>9:10</sub> and multiply by 1.2.
+For example, to estimate R<sub>90</sub> (the radius that will include 90% of the impacts) take R<sub>5:5</sub> or R<sub>9:10</sub> and multiply by 1.2. Numbers in bold in the table above have more significant figures.
 
 ### Contaminated Normal Distribution
 
