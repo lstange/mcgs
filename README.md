@@ -100,7 +100,7 @@ There are several ways to estimate CEP. The easiest two are median and Rayleigh 
 
 *Median CEP estimator* is the simplest one possible: rank order shots by radial miss distance, then take the median. For example, in a 5 shot group discard two impacts closest to the center of the target and two impacts furthest from the center of the target, then measure the distance between the center of the target and the center of remaining impact. This gives you estimated CEP.
 
-Median estimator is non-parametric (it does not rely on assumptions about underlying distributions) and is robust (not very sensitive to outliers). It's slightly biased up, especially for small groups, but the bias is in the third significant digit so probably won't be visible in presence of mush stronger noise.
+Median estimator is non-parametric (it does not rely on assumptions about underlying distributions) and is robust (not very sensitive to outliers). It's slightly biased up, especially for small groups, but the bias is in the third significant digit so probably won't be visible in presence of much stronger noise.
 
 ![Estimating CEP as median radial miss](cep.jpg?raw=true)
 
@@ -118,16 +118,22 @@ In this simulation CV of Rayleigh estimator is consistently lower, but that's to
 
 ### Estimating from a Single Order Statistic
 
-Taking the median is not the most efficient way to estimate CEP from a single order statistic. For small groups using the worst miss radius results in lowest variance, while second worst miss radius works better for larger groups. The latter is also less sensitive to fliers. The following table shows conversion factors for Rayleigh distribution. R<sub>M:N</sub> stands for "*M*th smallest miss radius in a group of N shots". 
+Taking the median is not the most efficient way to estimate CEP from a single order statistic. For small groups using the worst miss radius results in lower variance, while second worst miss radius works better for larger groups. The latter is also less sensitive to fliers.
+
+The following table shows conversion factors for Rayleigh distribution. 
 
 |  Shots |             CEP        | R<sub>90</sub>         |     R<sub>95</sub>     |
 |-------:|------------------------|------------------------|------------------------|
 |       1| 1     R<sub>1:1</sub>  | 3 R<sub>1:1</sub>      | 4.359 R<sub>1:1</sub>  |
 |       2| 0.749 R<sub>2:2</sub>  | 1.732 R<sub>2:2</sub>  | 2.201 R<sub>2:2</sub>  |
 |       3| 0.659 R<sub>3:3</sub>  | 1.414 R<sub>3:3</sub>  | 1.732 R<sub>3:3</sub>  |
-|       5| 0.578 R<sub>5:5</sub>  | 1.172 R<sub>5:5</sub>  | 1.398 R<sub>5:5</sub>  |
+|       5| 0.578 R<sub>5:5</sub>  | **1.172** R<sub>5:5</sub>  | 1.398 R<sub>5:5</sub>  |
 |       8| 0.655 R<sub>7:8</sub>  | 1.281 R<sub>7:8</sub>  | 1.506 R<sub>7:8</sub>  |
-|      10| 0.615 R<sub>9:10</sub> | 1.187 R<sub>9:10</sub> | 1.388 R<sub>9:10</sub> |
+|      10| 0.615 R<sub>9:10</sub> | **1.187** R<sub>9:10</sub> | 1.388 R<sub>9:10</sub> |
+
+R<sub>M:N</sub> stands for "*M*th smallest miss radius in a group of N shots". For example, R<sub>5:5</sub> is the worst miss radius in a five shot group, and R<sub>9:10</sub> is second worst miss radius in a ten shot group.
+
+For example, to estimate R<sub>90</sub> (the radius that will include 90% of impacts) take R<sub>5:5</sub> or R<sub>9:10</sub> and multiply by 1.2.
 
 ### Contaminated Normal Distribution
 
@@ -183,8 +189,6 @@ To compare with regular group size:
 
 Assuming perfect zero:
 
-  + 3 shot group size is about the same as R<sub>95</sub>, or twice the CEP
-  + 5 shot group size is about the same as R<sub>99</sub>
   + CEP in cm is about the same as 5 shot group size in inches (more precisely, coefficient is 2.6 rather than 2.54)
-  + R<sub>90</sub> is about 1.2 times larger than worst miss radius in a five-shot group
-  + R<sub>90</sub> is about 1.2 times larger than second worst miss radius in a ten-shot group
+  + R<sub>90</sub> is about 20% larger than worst miss radius in a five-shot group
+  + R<sub>90</sub> is about 20% larger than second worst miss radius in a ten-shot group
