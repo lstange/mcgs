@@ -116,19 +116,18 @@ In this simulation CV of Rayleigh estimator is consistently lower, but that's to
 
 *Maximum likelihood CEP estimator* is even more work: sum squares of all radial miss distances, take square root, then multiply by [ugly adjustment factor](https://en.wikipedia.org/wiki/Rayleigh_distribution#Parameter_estimation) `sqrt(ln(2)/`&pi;`)*power(4,N)*N!*(N-1)!/(2*N)!` that depends on number of shots N. In theory it's slightly better than Rayleigh estimator, but even more sensitive to outliers.
 
-### Estimating R<sub>90</sub> from a Single Order Statistic
+### Estimating from a Single Order Statistic
 
-R<sub>M:N</sub> stands for "*M*th smallest miss radius in a group of N shots". For small
-groups using the worst miss radius results in lowest variance, while second worst miss radius works better for larger groups. The latter is also less sensitive to fliers.
+Taking the median is not the most efficient way to estimate CEP from a single order statistic. For small groups using the worst miss radius results in lowest variance, while second worst miss radius works better for larger groups. The latter is also less sensitive to fliers. The following table shows conversion factors for Rayleigh distribution. R<sub>M:N</sub> stands for "*M*th smallest miss radius in a group of N shots". 
 
-|  Shots | R<sub>90</sub>         |
-|-------:|------------------------|
-|       1| 3 R<sub>1:1</sub>      |
-|       2| 1.732 R<sub>2:2</sub>  |
-|       3| 1.414 R<sub>3:3</sub>  |
-|       5| 1.172 R<sub>5:5</sub>  |
-|       8| 1.281 R<sub>7:8</sub>  |
-|      10| 1.187 R<sub>9:10</sub> |
+|  Shots |             CEP        | R<sub>90</sub>         |     R<sub>95</sub>     |
+|-------:|------------------------|------------------------|------------------------|
+|       1| 1     R<sub>1:1</sub>  | 3 R<sub>1:1</sub>      | 4.359 R<sub>1:1</sub>  |
+|       2| 0.749 R<sub>2:2</sub>  | 1.732 R<sub>2:2</sub>  | 2.201 R<sub>2:2</sub>  |
+|       3| 0.659 R<sub>3:3</sub>  | 1.414 R<sub>3:3</sub>  | 1.732 R<sub>3:3</sub>  |
+|       5| 0.578 R<sub>5:5</sub>  | 1.172 R<sub>5:5</sub>  | 1.398 R<sub>5:5</sub>  |
+|       8| 0.655 R<sub>7:8</sub>  | 1.281 R<sub>7:8</sub>  | 1.506 R<sub>7:8</sub>  |
+|      10| 0.615 R<sub>9:10</sub> | 1.187 R<sub>9:10</sub> | 1.388 R<sub>9:10</sub> |
 
 ### Contaminated Normal Distribution
 
