@@ -190,5 +190,5 @@ To compare with regular group size:
 Assuming perfect zero:
 
   + CEP in cm is about the same as 5 shot group size in inches (more precisely, coefficient is 2.6 rather than 2.54)
-  + R<sub>90</sub> is about 20% larger than worst miss radius in a five-shot group
-  + R<sub>90</sub> is about 20% larger than second worst miss radius in a ten-shot group
+  + R<sub>90</sub> is about 20% larger than worst miss radius in a 5 shot group
+  + R<sub>90</sub> is about 20% larger than second worst miss radius in a 10 shot group
