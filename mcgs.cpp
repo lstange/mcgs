@@ -374,11 +374,13 @@ int main(int argc, char* argv[])
   int hits_within_r50hat = 0;
   int hits_within_r90hat = 0;
   int hits_within_r90hat2 = 0;
+  int hits_within_r90hat3 = 0;
   int hits_within_r95hat = 0;
   double double_med = 0;
   double r50hat = 0;
   double r90hat = 0;
   double r90hat2 = 0;
+  double r90hat3 = 0;
   double r95hat = 0;
   for (int experiment = 0; experiment < experiments; experiment++) {
     double best_gs = 0, worst_gs = 0;
@@ -408,9 +410,9 @@ int main(int argc, char* argv[])
       if (shots_in_group == 4) {
         nsd_s.push(g.nsd_kuchnost());
       }
-      double minus1 = g.group_size_excluding_worst();
-      gs_s2.push(minus1);
-      gs2.push(minus1);
+      double this_minus1 = g.group_size_excluding_worst();
+      gs_s2.push(this_minus1);
+      gs2.push(this_minus1);
       gsg_v.push_back(this_gs);
       if (j) {
         if (best_gs > this_gs) {
@@ -463,6 +465,9 @@ int main(int argc, char* argv[])
           if (r.at(i) < r90hat2) {
             hits_within_r90hat2++;
           }
+          if (r.at(i) < r90hat3) {
+            hits_within_r90hat3++;
+          }
           if (r.at(i) < r95hat) {
             hits_within_r95hat++;
           }
@@ -499,6 +504,7 @@ int main(int argc, char* argv[])
           // wxMaxima: find_root(integrate(5*x*(1-exp(-x^2/2))^4*exp(-x^2/2-k^2*x^2/2), x, 0, inf)=1-0.9, k, 1, 10);
           r90hat = this_wr  * 1.17215228421396;
           r90hat2 = this_wr  * 1.2;
+          r90hat3 = this_gs  * 0.8;
           // wxMaxima: find_root(integrate(5*x*(1-exp(-x^2/2))^4*exp(-x^2/2-k^2*x^2/2), x, 0, inf)=1-0.95, k, 1, 10);
           r95hat = this_wr  * 1.398425341757205;
           break;
@@ -516,6 +522,7 @@ int main(int argc, char* argv[])
           // wxMaxima: find_root(integrate(90*x*(1-exp(-x^2/2))^8*exp(-x^2-k^2*x^2/2), x, 0, inf)=1-0.9, k, 1, 10);
           r90hat = this_swr * 1.187140545277712;
           r90hat2 = this_swr  * 1.2;
+          r90hat3 = this_minus1  * 0.75;
           // wxMaxima: find_root(integrate(90*x*(1-exp(-x^2/2))^8*exp(-x^2-k^2*x^2/2), x, 0, inf)=1-0.95, k, 1, 10);
           r95hat = this_swr * 1.387586460106418;
           break;
@@ -609,29 +616,35 @@ int main(int argc, char* argv[])
     }
     third_worst_r_s.show("Third worst miss radius:", theoretical_third_worst);
     std::cout << "Percent of hits within double median radius: " << 100. * hits_within_double_median / shots_in_group / ((double)groups_in_experiment * experiments - 1) << "%\n";
+    double denominator = shots_in_group * ((double)groups_in_experiment * experiments - 1);
     switch (shots_in_group) {
       case 1: case 2: case 3: case 5: 
-        std::cout << "Percent of hits within R50hat based on worst miss radius: " << 100. * hits_within_r50hat / shots_in_group / ((double)groups_in_experiment * experiments - 1) << "%\n";
-        std::cout << "Percent of hits within R90hat based on worst miss radius: " << 100. * hits_within_r90hat / shots_in_group / ((double)groups_in_experiment * experiments - 1) << "%\n";
-        std::cout << "Percent of hits within R95hat based on worst miss radius: " << 100. * hits_within_r95hat / shots_in_group / ((double)groups_in_experiment * experiments - 1) << "%\n";
+        std::cout << "Percent of hits within R50hat based on worst miss radius: " << 100. * hits_within_r50hat / denominator << "%\n";
+        std::cout << "Percent of hits within R90hat based on worst miss radius: " << 100. * hits_within_r90hat / denominator << "%\n";
+        std::cout << "Percent of hits within R95hat based on worst miss radius: " << 100. * hits_within_r95hat / denominator << "%\n";
         break;
       case 8: case 10:
-        std::cout << "Percent of hits within R50hat based on second worst miss radius: " << 100. * hits_within_r50hat / shots_in_group / ((double)groups_in_experiment * experiments - 1) << "%\n";
-        std::cout << "Percent of hits within R90hat based on second worst miss radius: " << 100. * hits_within_r90hat / shots_in_group / ((double)groups_in_experiment * experiments - 1) << "%\n";
-        std::cout << "Percent of hits within R95hat based on second worst miss radius: " << 100. * hits_within_r95hat / shots_in_group / ((double)groups_in_experiment * experiments - 1) << "%\n";
+        std::cout << "Percent of hits within R50hat based on second worst miss radius: " << 100. * hits_within_r50hat / denominator << "%\n";
+        std::cout << "Percent of hits within R90hat based on second worst miss radius: " << 100. * hits_within_r90hat / denominator << "%\n";
+        std::cout << "Percent of hits within R95hat based on second worst miss radius: " << 100. * hits_within_r95hat / denominator << "%\n";
         break;
     }
     switch (shots_in_group) {
       case 5: 
         std::cout << "Percent of hits within 1.2 * worst miss radius: " 
-          << 100. * hits_within_r90hat2 / shots_in_group / ((double)groups_in_experiment * experiments - 1) << "%"
+          << 100. * hits_within_r90hat2 / denominator << "%"
           // wxMaxima: float(1-integrate(5*(1-exp(-x^2/2))^4*x*exp(-x^2/2-1.2^2*x^2/2), x, 0, inf));
           << " (cf. " << 100 * 0.9080894764538276 << "%)\n";
+        std::cout << "Percent of hits within 0.8 * group size: " 
+          << 100. * hits_within_r90hat3 / denominator << "%\n";
         break;
       case 10:
-        std::cout << "Percent of hits within 1.2 * second worst miss radius: " << 100. * hits_within_r90hat2 / shots_in_group / ((double)groups_in_experiment * experiments - 1) << "%"
+        std::cout << "Percent of hits within 1.2 * second worst miss radius: " 
+          << 100. * hits_within_r90hat2 / denominator << "%"
           // wxMaxima: float(1-integrate(90*(1-exp(-x^2/2))^8*x*exp(-x^2-1.2^2*x^2/2), x, 0, inf));
           << " (cf. " << 100 * 0.9042093867664657 << "%)\n";
+        std::cout << "Percent of hits within 0.75 * group size excluding worst shot: " 
+          << 100. * hits_within_r90hat3 / denominator << "%\n";
         break;
     }
   } else {
