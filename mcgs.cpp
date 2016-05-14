@@ -282,7 +282,7 @@ class DescriptiveStat
     void show(const char* metric, double theoretical = 0) {
       std::cout << metric << " mean=" << mean(); 
       if (theoretical > 0) {
-        std::cout << " (cf. " << theoretical << ")";
+        std::cout << " (expected " << theoretical << ")";
       }      
       std::cout << ", CV=" << stdev() / mean() << "\n";
     }
@@ -375,10 +375,6 @@ int main(int argc, char* argv[])
         // wxMaxima: find_root(integrate(x*exp(-x^2/2)*exp(-x^2*k^2/2), x, 0, inf)=1-0.9, k, 1, 10);
         r90hat_factor = 3;
         break;
-      case  2: 
-        // wxMaxima: find_root(integrate(2*(1-exp(-x^2/2))*x*exp(-x^2/2)*exp(-x^2*k^2/2), x, 0, inf)=1-0.9, k, 1, 10); 
-        r90hat_factor = 1.732050807568877;
-        break;
       case  3: 
         // wxMaxima: find_root(integrate(3*x*(1-exp(-x^2/2))^2*exp(-x^2/2-k^2*x^2/2), x, 0, inf)=1-0.9, k, 1, 10);
         r90hat_factor = 1.414213562373095;
@@ -402,6 +398,14 @@ int main(int argc, char* argv[])
     }
   } else { // Asymptotic approximation, for large number of groups in experiment
     switch (shots_in_group) {
+      case  1:
+        // wxMaxima: float(sqrt(2*log(10))/integrate(x*exp(-x^2/2)*x, x, 0, inf));
+        r90hat_factor  = 1.712233160383746;
+        break;
+      case  3:
+        // wxMaxima: float(sqrt(2*log(10))/integrate(3*(1-exp(-x^2/2))^2*x*exp(-x^2/2)*x, x, 0, inf));
+        r90hat_factor  = 1.175960143568417;
+        break;
       case  5:
         // wxMaxima: float(sqrt(2*log(10))/integrate(5*(1-exp(-x^2/2))^4*x*exp(-x^2/2)*x, x, 0, inf));
         r90hat_factor  = 1.037938194579831;
@@ -510,7 +514,6 @@ int main(int argc, char* argv[])
     if (groups_in_experiment == 1) {
       switch (shots_in_group) {
         case  1:
-        case  2: 
         case  3: 
           r90hat = wr.mean() * r90hat_factor;
           break;
@@ -518,9 +521,6 @@ int main(int argc, char* argv[])
           r90hat = wr.mean()  * r90hat_factor;
           r90hat2 = wr.mean()  * r90hat2_factor;
           r90hat3 = gs.mean()  * r90hat3_factor;
-          break;
-        case  8: 
-          r90hat = swr.mean() * r90hat_factor;
           break;
         case 10: 
           r90hat = swr.mean() * r90hat_factor;
@@ -540,6 +540,10 @@ int main(int argc, char* argv[])
       twr_s.push(twr.mean());
       // Asymptotic approximation
       switch (shots_in_group) {
+        case  1:
+        case  3:
+          r90hat  = wr.mean() * r90hat_factor;
+          break;
         case  5:
           r90hat  = wr.mean() * r90hat_factor;
           r90hat2 = wr.mean() * r90hat2_factor;
@@ -571,14 +575,13 @@ int main(int argc, char* argv[])
     double theoretical_worst = 0;
     if (proportion_of_outliers == 0) {
       switch (shots_in_group) {
-        case 2:
-          theoretical_worst = (2 * sqrt(2) - 1) * sqrt(M_PI) / 2;
-          break;
         case 3:
-          theoretical_worst = (-9 + 9 * sqrt(2) + sqrt(6)) * sqrt(M_PI) / 6;
+          // wxMaxima: float(integrate(3*(1-exp(-x^2/2))^2*x*exp(-x^2/2)*x, x, 0, inf));
+          theoretical_worst = 1.824862890146495;
           break;
         case 5:
-          theoretical_worst =(-300 + 75 * sqrt(2) + 100 * sqrt(6) + 6 * sqrt(10)) * sqrt(M_PI) / 60;
+          // wxMaxima: float(integrate(5*(1-exp(-x^2/2))^4*x*exp(-x^2/2)*x, x, 0, inf));
+          theoretical_worst = 2.067527755983637;
           break;
       }
     }
@@ -586,34 +589,9 @@ int main(int argc, char* argv[])
     double theoretical_second_worst = 0;
     if (proportion_of_outliers == 0) {
       switch (shots_in_group) {
-        case 5:
-          theoretical_second_worst =
-            ( 300 
-            + 225 * sqrt(2) 
-            - 200 * sqrt(6) 
-            -  24 * sqrt(10) 
-            ) * sqrt(M_PI) / 60;
-          break;
-        case 8:
-          theoretical_second_worst =
-            ( 6615 
-            + 22050 * sqrt(2) 
-            +  9800 * sqrt(3) 
-            -  7840 * sqrt(6) 
-            -  9408 * sqrt(10) 
-            -  1440 * sqrt(14)
-            ) * sqrt(M_PI) / 420;
-          break;
         case 10:
-          theoretical_second_worst =
-            ( 42525 
-            + 60550 * sqrt(2) 
-            + 73500 * sqrt(3) 
-            +   378 * sqrt(5) 
-            - 16800 * sqrt(6) 
-            - 42336 * sqrt(10) 
-            - 21600 * sqrt(14)
-            ) * sqrt(M_PI) / 420;
+          // wxMaxima: float(integrate(90*x*(1-exp(-x^2/2))^8*exp(-x^2)*x, x, 0, inf));
+          theoretical_second_worst = 1.929379316672818;
           break;
       }
     }
@@ -639,28 +617,28 @@ int main(int argc, char* argv[])
     swr_s.show("Average second worst miss radius:");
     twr_s.show("Average third worst miss radius:");
   }  
-    double denominator = shots_in_group * ((double)groups_in_experiment * (experiments - 1));
-    switch (shots_in_group) {
-      case 1: case 2: case 3: case 5: 
-        std::cout << "Percent of hits within " << r90hat_factor << " * worst miss radius: " << 100. * hits_within_r90hat / denominator << "%\n";
-        break;
-      case 8: case 10:
-        std::cout << "Percent of hits within " << r90hat_factor << " * second worst miss radius: " << 100. * hits_within_r90hat / denominator << "%\n";
-        break;
-    }
-    switch (shots_in_group) {
-      case 5: 
-        std::cout << "Percent of hits within " << r90hat2_factor << " * worst miss radius: " 
-          << 100. * hits_within_r90hat2 / denominator << "%\n";
-        std::cout << "Percent of hits within " << r90hat3_factor << " * group size: " 
-          << 100. * hits_within_r90hat3 / denominator << "%\n";
-        break;
-      case 10:
-        std::cout << "Percent of hits within " << r90hat2_factor << " * second worst miss radius: " 
-          << 100. * hits_within_r90hat2 / denominator << "%\n";
-        std::cout << "Percent of hits within " << r90hat3_factor << " * group size excluding worst shot: " 
-          << 100. * hits_within_r90hat3 / denominator << "%\n";
-        break;
-    }
+  double denominator = shots_in_group * ((double)groups_in_experiment * (experiments - 1));
+  switch (shots_in_group) {
+    case 1: case 3: case 5: 
+      std::cout << "Percent of hits within " << r90hat_factor << " * worst miss radius: " << 100. * hits_within_r90hat / denominator << "%\n";
+      break;
+    case 10:
+      std::cout << "Percent of hits within " << r90hat_factor << " * second worst miss radius: " << 100. * hits_within_r90hat / denominator << "%\n";
+      break;
+  }
+  switch (shots_in_group) {
+    case 5: 
+      std::cout << "Percent of hits within " << r90hat2_factor << " * worst miss radius: " 
+        << 100. * hits_within_r90hat2 / denominator << "%\n";
+      std::cout << "Percent of hits within " << r90hat3_factor << " * group size: " 
+        << 100. * hits_within_r90hat3 / denominator << "%\n";
+      break;
+    case 10:
+      std::cout << "Percent of hits within " << r90hat2_factor << " * second worst miss radius: " 
+        << 100. * hits_within_r90hat2 / denominator << "%\n";
+      std::cout << "Percent of hits within " << r90hat3_factor << " * group size (excluding worst shot in group): " 
+        << 100. * hits_within_r90hat3 / denominator << "%\n";
+      break;
+  }
   return 0;
 }
