@@ -116,9 +116,9 @@ In this simulation CV of Rayleigh estimator is consistently lower, but that's to
 
 *Maximum likelihood CEP estimator* is even more work: sum squares of all radial miss distances, take square root, then multiply by [ugly adjustment factor](https://en.wikipedia.org/wiki/Rayleigh_distribution#Parameter_estimation) `sqrt(ln(2)/`&pi;`)*power(4,N)*N!*(N-1)!/(2*N)!` that depends on number of shots N. In theory it's slightly better than Rayleigh estimator, but even more sensitive to outliers.
 
-### Estimating from a Single Order Statistic
+### Estimating R<sub>90</sub> from a Single Order Statistic
 
-Taking the median is not the most efficient way to estimate CEP from a single order statistic. For small groups using the worst miss radius results in lower variance, while second worst miss radius works better for larger groups. The latter is also less sensitive to fliers.
+Taking the median is not the most efficient way to estimate parameters of Rayleigh distribution from a single order statistic. For small groups using the worst miss radius results in lower variance, while second worst miss radius works better for larger groups. The latter is also less sensitive to fliers.
 
 The following table shows conversion factors for Rayleigh distribution. 
 
@@ -131,9 +131,9 @@ The following table shows conversion factors for Rayleigh distribution.
 
 R<sub>M:N</sub> stands for "*M*th smallest miss radius in a group of N shots". R<sub>5:5</sub> is the worst miss radius in a five shot group, and R<sub>9:10</sub> is second worst miss radius in a ten shot group.
 
-For example, to estimate R<sub>90</sub> (the radius that will include 90% of the impacts) take R<sub>5:5</sub> or R<sub>9:10</sub> and multiply by 1.2. Numbers in bold in the table above have more significant figures.
+For example, to estimate R<sub>90</sub> (the smallest radius that will include 90% of the impacts) take R<sub>5:5</sub> or R<sub>9:10</sub> and multiply by 1.2. Numbers in bold in the table above have more significant figures.
 
-Distribution of R<sub>M:N</sub> is asymmetric, so conversion factors are lower for average of R<sub>M:N</sub>.
+Because distribution of R<sub>M:N</sub> is asymmetric, conversion factors are lower for average of R<sub>M:N</sub> and 1.2 factor becomes conservative.
 
 ### Contaminated Normal Distribution
 
