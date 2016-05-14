@@ -122,18 +122,18 @@ Taking the median is not the most efficient way to estimate CEP from a single or
 
 The following table shows conversion factors for Rayleigh distribution. 
 
-|  Shots |             CEP        | R<sub>90</sub>         |     R<sub>95</sub>     |
-|-------:|------------------------|------------------------|------------------------|
-|       1| 1     R<sub>1:1</sub>  | 3 R<sub>1:1</sub>      | 4.359 R<sub>1:1</sub>  |
-|       2| 0.749 R<sub>2:2</sub>  | 1.732 R<sub>2:2</sub>  | 2.201 R<sub>2:2</sub>  |
-|       3| 0.659 R<sub>3:3</sub>  | 1.414 R<sub>3:3</sub>  | 1.732 R<sub>3:3</sub>  |
-|       5| 0.578 R<sub>5:5</sub>  | **1.172** R<sub>5:5</sub>  | 1.398 R<sub>5:5</sub>  |
-|       8| 0.655 R<sub>7:8</sub>  | 1.281 R<sub>7:8</sub>  | 1.506 R<sub>7:8</sub>  |
-|      10| 0.615 R<sub>9:10</sub> | **1.187** R<sub>9:10</sub> | 1.388 R<sub>9:10</sub> |
+|Shots| From one group                            |      From average of many groups     |
+|----:|-------------------------------------------|--------------------------------------|
+|    1|R<sub>90</sub> = 3         R<sub>1:1</sub> |R<sub>90</sub> = 1.712 R<sub>1:1</sub>|
+|    3|R<sub>90</sub> = 1.414     R<sub>3:3</sub> |R<sub>90</sub> = 1.176 R<sub>3:3</sub>|
+|    5|R<sub>90</sub> = **1.172** R<sub>5:5</sub> |R<sub>90</sub> = 1.038 R<sub>5:5</sub>|
+|   10|R<sub>90</sub> = **1.187** R<sub>9:10</sub>|R<sub>90</sub> = 1.112 R<sub>9:10</sub> |
 
 R<sub>M:N</sub> stands for "*M*th smallest miss radius in a group of N shots". For example, R<sub>5:5</sub> is the worst miss radius in a five shot group, and R<sub>9:10</sub> is second worst miss radius in a ten shot group.
 
 For example, to estimate R<sub>90</sub> (the radius that will include 90% of the impacts) take R<sub>5:5</sub> or R<sub>9:10</sub> and multiply by 1.2. Numbers in bold in the table above have more significant figures.
+
+Distribution of R<sub>M:N</sub> is asymmetric, so conversion factors are lower for average of R<sub>M:N</sub>.
 
 ### Contaminated Normal Distribution
 
