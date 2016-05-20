@@ -139,7 +139,7 @@ Because distribution of R<sub>M:N</sub> is asymmetric, conversion factors are lo
 
 We can do even better by adding up *two* order statistics from the same group. For Rayleigh distribution, 60<sup>th</sup> and 90<sup>th</sup> percentiles of miss radius are close to optimal in terms of CV.
 
-In a ten shot group R<sub>9:10</sub> &cong; **0.7 (R<sub>6:10</sub> + R<sub>9:10</sub>)**.
+In a 10 shot group, **R<sub>90</sub> &cong; 0.7 (R<sub>6:10</sub> + R<sub>9:10</sub>)**.
 
 Distribution of this metric is less asymmetric than that of a single order statistic, so averaging multiple groups does not introduce as much bias.
 
