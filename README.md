@@ -55,7 +55,7 @@ Radial miss distances for bivariate normal distribution follow [Rayleigh distrib
 
 Here R<sub>50</sub> is radius of a circle containing centers of half the impacts, R<sub>90</sub> contains 90% and so on.
 
-Using the tables below, one can convert between group size and radius of the circle containing given proportion of impacts. This conversion assumes ideal accuracy (perfect zero). More on that later.
+Using the tables below, one can convert between group size and radius of the circle containing given proportion of impacts. This conversion assumes ideal accuracy (perfect zero). More on that later. Factors are ratios between expected values (averages of many groups).
 
 |                  |3 shot group size|5 shot group size|10 shot group size|R<sub>50</sub> |R<sub>90</sub> |R<sub>95</sub> |R<sub>99</sub> |
 |------------------|----------------:|----------------:|-----------------:|---:|---:|---:|---:|
@@ -120,20 +120,28 @@ In this simulation CV of Rayleigh estimator is consistently lower, but that's to
 
 Taking the median is not the most efficient way to estimate parameters of Rayleigh distribution from a single order statistic. For small groups using the worst miss radius results in lower variance, while second worst miss radius works better for larger groups. The latter is also less sensitive to fliers.
 
-The following table shows conversion factors for Rayleigh distribution. 
+The following table shows conversion factors from a single order statistic to R<sub>90</sub> for Rayleigh distribution. 
 
-|Shots| From one group                            |      From average of many groups     |
-|----:|-------------------------------------------|--------------------------------------|
-|    1|R<sub>90</sub> = 3         R<sub>1:1</sub> |R<sub>90</sub> = 1.712 R<sub>1:1</sub>|
-|    3|R<sub>90</sub> = 1.414     R<sub>3:3</sub> |R<sub>90</sub> = 1.176 R<sub>3:3</sub>|
-|    5|R<sub>90</sub> = **1.172** R<sub>5:5</sub> |R<sub>90</sub> = 1.038 R<sub>5:5</sub>|
-|   10|R<sub>90</sub> = **1.187** R<sub>9:10</sub>|R<sub>90</sub> = 1.112 R<sub>9:10</sub> |
+|From            |One group|Average of 2 groups|Average of many groups|
+|---------------:|---------|-------------------|----------------------|
+|R<sub>1:1</sub> |3        |2.222              |1.712                 |
+|R<sub>3:3</sub> |1.414    |1.289              |1.176                 |
+|R<sub>5:5</sub> |1.172    |1.103              |1.038                 |
+|R<sub>9:10</sub>|**1.187**|1.149              |1.112                 |
 
 R<sub>M:N</sub> stands for "*M*th smallest miss radius in a group of N shots". R<sub>5:5</sub> is the worst miss radius in a five shot group, and R<sub>9:10</sub> is second worst miss radius in a ten shot group.
 
-For example, to estimate R<sub>90</sub> (the smallest radius that will include 90% of the impacts) take R<sub>5:5</sub> or R<sub>9:10</sub> and multiply by 1.2. Numbers in bold in the table above have more significant figures.
+For example, to estimate R<sub>90</sub> (the smallest radius that will include 90% of the impacts) from one group, take R<sub>5:5</sub> or R<sub>9:10</sub> and multiply by 1.2.
 
-Because distribution of R<sub>M:N</sub> is asymmetric, conversion factors are lower for average of R<sub>M:N</sub> and 1.2 factor becomes conservative.
+Because distribution of R<sub>M:N</sub> is asymmetric, conversion factors are lower for average of R<sub>M:N</sub> over several groups, and 1.2 factor becomes conservative. The case of one-shot "group" is equivalent to Rayleigh estimator described above.
+
+### Estimating R<sub>90</sub> from Two Order Statistics
+
+We can do even better by adding up *two* order statistics from the same group. For Rayleigh distribution, 60<sup>th</sup> and 90<sup>th</sup> percentiles of miss radius are close to optimal in terms of CV.
+
+In a ten shot group R<sub>9:10</sub> &cong; **0.7 (R<sub>6:10</sub> + R<sub>9:10</sub>)**.
+
+Distribution of this metric is less asymmetric than that of a single order statistic, so averaging multiple groups does not introduce as much bias.
 
 ### Contaminated Normal Distribution
 
@@ -187,8 +195,6 @@ To compare with regular group size:
 
 ### tl,dr: Rules of Thumb
 
-Assuming perfect zero:
-
-  + CEP in cm is about the same as 5 shot group size in inches (more precisely, coefficient is 2.6 rather than 2.54)
-  + R<sub>90</sub> is about 20% larger than worst miss radius in a 5 shot group
-  + R<sub>90</sub> is about 20% larger than second worst miss radius in a 10 shot group
+  + Assuming perfect zero, CEP in cm is about the same as 5 shot group size in inches (more precisely, coefficient is 2.6 rather than 2.54)
+  + R<sub>90</sub> is about 20% larger than 9<sup>th</sup> miss radius in a 10 shot group
+  + R<sub>90</sub> is about 70% of sum of 6<sup>th</sup> and 9<sup>th</sup> miss radiuses in a 10 shot group
