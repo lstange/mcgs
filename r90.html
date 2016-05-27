@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+
+<title>R90</title>
+
+<script src="r90_files/jquery-1.11.0/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="r90_files/bootstrap-3.3.1/css/bootstrap.min.css" rel="stylesheet" />
+<script src="r90_files/bootstrap-3.3.1/js/bootstrap.min.js"></script>
+<script src="r90_files/bootstrap-3.3.1/shim/html5shiv.min.js"></script>
+<script src="r90_files/bootstrap-3.3.1/shim/respond.min.js"></script>
+
+<style type="text/css">code{white-space: pre;}</style>
+<link rel="stylesheet"
+      href="r90_files/highlight/default.css"
+      type="text/css" />
+<script src="r90_files/highlight/highlight.js"></script>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs && document.readyState && document.readyState === "complete") {
+   window.setTimeout(function() {
+      hljs.initHighlighting();
+   }, 0);
+}
+</script>
+
+
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img { 
+  max-width:100%; 
+  height: auto; 
+}
+</style>
+<div class="container-fluid main-container">
+
+
+<div id="header">
+<h1 class="title">R<sub>90</sub></h1>
+</div>
+
+
+<div id="abstract" class="section level3">
+<h3>Abstract</h3>
+<p>Several R<sub>90</sub> estimators are compared using Monte Carlo simulations. Estimators based on R<sub>9:10</sub> (second worst miss radius in a 10-shot group) and R<sub>6:10</sub>+R<sub>9:10</sub> found to perform well on wide variety of input distributions.</p>
+</div>
+<div id="objective" class="section level3">
+<h3>Objective</h3>
+<p>Based on observed shots, estimate R<sub>90</sub> (the radius of a circle that is expected to contain 90% of all impacts).</p>
+</div>
+<div id="estimators" class="section level3">
+<h3>Estimators</h3>
+<p><strong>5x5</strong>: Measure average extreme spread of five 5-shot groups. This common method is used by NRA magazine <em>American Rifleman</em> to report firearm accuracy. Multiply by 0.72 to get estimate of R<sub>90</sub>. This assumes perfect zero.</p>
+<p><strong>2x10 (9)</strong>: Measure 9<sup>th</sup> miss radius R<sub>9:10</sub> in each of the two 10 shot groups, take the average, multiply by 1.15 to get estimate of R<sub>90</sub>.</p>
+<p><strong>2x10 (6&amp;9)</strong>: In a 10 shot group, add 6<sup>th</sup> miss radius R<sub>6:10</sub> and 9<sup>th</sup> miss radius R<sub>9:10</sub>. Do it again with the second group and take the average. Multiply by 0.69 to get estimate of R<sub>90</sub>.</p>
+<p><strong>Rayleigh 20</strong>: Take the average of 20 miss radiuses, multiply by 1.76 to get estimate of R<sub>90</sub>.</p>
+</div>
+<div id="experiment-0-bivariate-normal-distribution" class="section level3">
+<h3>Experiment 0: Bivariate Normal Distribution</h3>
+<p>Start with establishing the baseline. Pull impact coordinates from standard bivariate normal distibution, estimate R<sub>90</sub>, pull another impact, see if it lands inside R<sub>90</sub>. Repeat <span class="math">\(10^{5}\)</span> times and plot the distribution of R<sub>90</sub>.</p>
+<p><img src="r90_files/figure-html/fig_00-1.png" title="" alt="" width="900" /> <img src="r90_files/figure-html/fig_0-1.png" title="" alt="" width="900" /></p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">Estimator</th>
+<th align="left">Hits within estimated R<sub>90</sub></th>
+<th align="left">RMSE</th>
+<th align="left">MAE</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">5x5</td>
+<td align="left">90.226%</td>
+<td align="left">0.274</td>
+<td align="left">0.466</td>
+</tr>
+<tr class="even">
+<td align="left">2x10 (9)</td>
+<td align="left">90.067%</td>
+<td align="left">0.308</td>
+<td align="left">0.493</td>
+</tr>
+<tr class="odd">
+<td align="left">2x10 (6&amp;9)</td>
+<td align="left">90.136%</td>
+<td align="left">0.277</td>
+<td align="left">0.469</td>
+</tr>
+<tr class="even">
+<td align="left">Rayleigh 20</td>
+<td align="left">90.446%</td>
+<td align="left">0.238</td>
+<td align="left">0.435</td>
+</tr>
+</tbody>
+</table>
+<p>6&amp;9 estimator with 20 shots and 4 measurements works about as well as 5x5 estimator with 25 shots and 5 measurements.</p>
+<p>Rayleigh estimator is better, but it requires 20 measurments.</p>
+<p>Now let’s shake the ladder - see how well the estimators work when underlying assumptions are violated.</p>
+</div>
+<div id="experiment-1-offset-zero" class="section level3">
+<h3>Experiment 1: Offset Zero</h3>
+<p>Start by introducing some vertical offset (constant point of impact shift). Not much, just one <span class="math">\(\sigma\)</span>. In practice this is pretty common. Constant wind, change in temperature and therefore muzzle velocity, or errors in determining range can all introduce systemic error.</p>
+<p><img src="r90_files/figure-html/fig_11-1.png" title="" alt="" width="900" /> <img src="r90_files/figure-html/fig_1-1.png" title="" alt="" width="900" /></p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">Estimator</th>
+<th align="left">Hits within estimated R<sub>90</sub></th>
+<th align="left">RMSE</th>
+<th align="left">MAE</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">5x5</td>
+<td align="left">79.162%</td>
+<td align="left">0.475</td>
+<td align="left">0.643</td>
+</tr>
+<tr class="even">
+<td align="left">2x10 (9)</td>
+<td align="left">90.473%</td>
+<td align="left">0.357</td>
+<td align="left">0.531</td>
+</tr>
+<tr class="odd">
+<td align="left">2x10 (6&amp;9)</td>
+<td align="left">90.899%</td>
+<td align="left">0.334</td>
+<td align="left">0.515</td>
+</tr>
+<tr class="even">
+<td align="left">Rayleigh 20</td>
+<td align="left">91.335%</td>
+<td align="left">0.301</td>
+<td align="left">0.489</td>
+</tr>
+</tbody>
+</table>
+<p>5x5 estimator now underestimates R<sub>90</sub>. This is expected because group size did not change, the group just moved away from the center of the target so average miss radius increased accordingly.</p>
+<p>Other estimators still work ok.</p>
+</div>
+<div id="experiment-2-contaminated-normal-distribution" class="section level3">
+<h3>Experiment 2: Contaminated Normal Distribution</h3>
+<p>Now let’s see what happens when instead of shifting point of impact we add some fliers. They are common in practice, and typical advice is to simply discard fliers. There are some problems, though.</p>
+<ul>
+<li><p>It’s hard to tell with any sort of consistency whether any particular shot is a flier. In Experiment 0, bottom left shot in the third group looks like a flier, but isn’t. All shots came from the same bivariate normal distribution. Excluding only called fliers depends a lot on the shooter. Some can do it way better than others.</p></li>
+<li><p>Re-shooting entire group after a flier is expensive and time-consuming, and group size without flier is biased down.</p></li>
+</ul>
+<p>A robust estimator that is not particularly sensitive to occasional flier is preferable.</p>
+<p>In this experiment we will simulate fliers by increasing standard deviation by a factor of 5 with 5% probability.</p>
+<p><img src="r90_files/figure-html/fig_22-1.png" title="" alt="" width="900" /> <img src="r90_files/figure-html/fig_2-1.png" title="" alt="" width="900" /></p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">Estimator</th>
+<th align="left">Hits within estimated R<sub>90</sub></th>
+<th align="left">RMSE</th>
+<th align="left">MAE</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">5x5</td>
+<td align="left">91.806%</td>
+<td align="left">1.03</td>
+<td align="left">0.86</td>
+</tr>
+<tr class="even">
+<td align="left">2x10 (9)</td>
+<td align="left">89.218%</td>
+<td align="left">0.915</td>
+<td align="left">0.716</td>
+</tr>
+<tr class="odd">
+<td align="left">2x10 (6&amp;9)</td>
+<td align="left">88.865%</td>
+<td align="left">0.605</td>
+<td align="left">0.618</td>
+</tr>
+<tr class="even">
+<td align="left">Rayleigh 20</td>
+<td align="left">90.954%</td>
+<td align="left">0.578</td>
+<td align="left">0.653</td>
+</tr>
+</tbody>
+</table>
+<p>9 and 6&amp;9 estimators are more robust (less affected by fliers).</p>
+</div>
+<div id="experiment-3-unequal-variance" class="section level3">
+<h3>Experiment 3: Unequal Variance</h3>
+<p>Now let’s see what happens when vertical and horizontal dispersions are different. In this experiment we flatten the groups - increase horizontal dispersion and decrease vertical dispersion.</p>
+<p>This is common in practice. For example, ammo-induced variance in muzzle velocity affects primarily vertical impact coordinate, while wind affects mostly horizontal coordinate.</p>
+<p><img src="r90_files/figure-html/fig_33-1.png" title="" alt="" width="900" /> <img src="r90_files/figure-html/fig_3-1.png" title="" alt="" width="900" /></p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">Estimator</th>
+<th align="left">Hits within estimated R<sub>90</sub></th>
+<th align="left">RMSE</th>
+<th align="left">MAE</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">5x5</td>
+<td align="left">89.835%</td>
+<td align="left">0.404</td>
+<td align="left">0.565</td>
+</tr>
+<tr class="even">
+<td align="left">2x10 (9)</td>
+<td align="left">89.008%</td>
+<td align="left">0.437</td>
+<td align="left">0.588</td>
+</tr>
+<tr class="odd">
+<td align="left">2x10 (6&amp;9)</td>
+<td align="left">87.947%</td>
+<td align="left">0.375</td>
+<td align="left">0.549</td>
+</tr>
+<tr class="even">
+<td align="left">Rayleigh 20</td>
+<td align="left">87.66%</td>
+<td align="left">0.314</td>
+<td align="left">0.504</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="experiment-4-all-together-now" class="section level3">
+<h3>Experiment 4: All Together Now</h3>
+<p>Now combine all factors together: increase standard deviation by a factor of 5 with 5% probability, add one <span class="math">\(\sigma\)</span> vertical offset, and flatten the groups.</p>
+<p><img src="r90_files/figure-html/fig_44-1.png" title="" alt="" width="900" /> <img src="r90_files/figure-html/fig_4-1.png" title="" alt="" width="900" /></p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">Estimator</th>
+<th align="left">Hits within estimated R<sub>90</sub></th>
+<th align="left">RMSE</th>
+<th align="left">MAE</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">5x5</td>
+<td align="left">88.684%</td>
+<td align="left">1.12</td>
+<td align="left">0.9</td>
+</tr>
+<tr class="even">
+<td align="left">2x10 (9)</td>
+<td align="left">89.333%</td>
+<td align="left">0.996</td>
+<td align="left">0.765</td>
+</tr>
+<tr class="odd">
+<td align="left">2x10 (6&amp;9)</td>
+<td align="left">89.546%</td>
+<td align="left">0.677</td>
+<td align="left">0.661</td>
+</tr>
+<tr class="even">
+<td align="left">Rayleigh 20</td>
+<td align="left">91.754%</td>
+<td align="left">0.723</td>
+<td align="left">0.727</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="appendix" class="section level3">
+<h3>Appendix</h3>
+<p>This section describes where the magic numbers 0.72, 1.15, 0.69, and 1.76 came from.</p>
+<p><strong>5x5</strong> factor 0.72 was determined approximately using Monte Carlo simulations because there does not seem to be another way to do it.</p>
+<p><strong>2x10 (9)</strong> factor 1.15 can be obtained analytically. Assume miss radiuses of individual shots follow Rayleigh distribution with <span class="math">\(\sigma = 1\)</span>. Its probability density function is</p>
+<p><span class="math">\[f(x)=x e^{-\frac{x^2}{2}}\]</span></p>
+<p>and cumulative distribution function is</p>
+<p><span class="math">\[F(x)=1-e^{-\frac{x^2}{2}}\]</span></p>
+<p>Probability density of <span class="math">\(m\)</span>th miss radius in a group of <span class="math">\(n\)</span> shots is</p>
+<p><span class="math">\[f_{m:n}(x)=\frac{n!}{(m-1)!(n-m)!}(F(x))^{m-1}(1-F(x))^{n-m}f(x)\]</span></p>
+<p>For <span class="math">\(m=9\)</span> and <span class="math">\(n=10\)</span></p>
+<p><span class="math">\[f_{9:10}(x)=\frac{10!}{(9-1)!(10-9)!}(F(x))^{9-1}(1-F(x))^{10-9}f(x)=90(F(x))^{8}(1-F(x))f(x)\]</span> <span class="math">\[=90\left(1-e^{-\frac{x^2}{2}}\right)^{8}e^{-\frac{x^2}{2}}x e^{-\frac{x^2}{2}}=90\left(1-e^{-\frac{x^2}{2}}\right)^{8}x e^{-x^2}\]</span></p>
+<p>Let <span class="math">\(t\)</span> be average of two miss radiuses <span class="math">\(R_{9:10}\)</span>. PDF of <span class="math">\(t\)</span> is convolution of PDFs <span class="math">\(f_{9:10}\)</span></p>
+<p><span class="math">\[p_2(t)=2\int_{0}^{2t}f_{9:10}(u)f_{9:10}(2t-u) du\]</span></p>
+<p>Probability that miss radius of the next shot is greater than <span class="math">\(y\)</span> (complementary cumulative distribution function) is</p>
+<p><span class="math">\[p(y)=1-F(y)=e^{-\frac{y^2}{2}}\]</span></p>
+<p><span class="math">\(y=R_{90}\)</span> should be proportional to <span class="math">\(t\)</span> with some yet unknown coefficient <span class="math">\(k\)</span>:</p>
+<p><span class="math">\[p(y)=p(kt)=e^{-\frac{k^2 t^2}{2}}\]</span></p>
+<p>Miss radius <span class="math">\(y\)</span> is greater than <span class="math">\(R_{90}\)</span> with 10% probability:</p>
+<p><span class="math">\[cdf_{9:10}(t)=\int_{0}^{\infty}p_2(t)e^{-\frac{t^2 k^2}{2}} dt=0.1\]</span></p>
+<p>The following <a href="http://maxima.sourceforge.net">Maxima</a> code can solve the above equation to get <span class="math">\(k \approx 1.149216\)</span>. Upper integration limit of 10 was chosen to be high enough to not affect the result much, but low enough so that numerical integration does not underflow.</p>
+<pre class="maxima"><code>assume(x&gt;0,t&gt;0,u&gt;0,k&gt;0);
+f(x):=90*x*(1-exp(-x^2/2))^8*exp(-x^2);
+p2(t):=romberg(2*f(u)*f(2*t-u),u,0,2*t);
+cdf(k):=romberg(p2(t)*exp(-t^2*k^2/2),t,0,10);
+find_root(cdf(k)=0.1,k,1.1,1.2);</code></pre>
+<p><strong>2x10 (6&amp;9)</strong> factor 0.69 can also be derived from the formulas for order statistics.</p>
+<p>Joint probability distribution of 6<sup>th</sup> miss radius <span class="math">\(x=R_{6:10}\)</span> and 9<sup>th</sup> miss radius <span class="math">\(y=R_{9:10}\)</span> is</p>
+<p><span class="math">\[f(x,y)=\frac{n!}{(j-1)!(k-j-1)!(n-k)!}[F(x)]^{j-1}(F(y)-F(x))^{k-j-1}(1-F(y))^{n-k}f(x)f(y)\]</span> <span class="math">\[=15120 \left[1-e^{-\frac{x^2}{2}}\right]^5 \left(e^{-\frac{x^2}{2}}-e^{-\frac{y^2}{2}}\right)^2 e^{-\frac{y^2}{2}} x e^{-\frac{x^2}{2}} y e^{-\frac{y^2}{2}}, x \le y\]</span></p>
+<p>Since we only care about <span class="math">\(x+y\)</span>, we can rotate axes by 45° and integrate over <span class="math">\(x-y\)</span>:</p>
+<p><span class="math">\[p(u)=\frac{1}{2}\int_{0}^{u}f\left(\frac{u-v}{2},\frac{u+v}{2}\right)dv\]</span></p>
+<p>Applying convolution to get PDF of the average of the two measurement:</p>
+<p><span class="math">\[p_2(t)=\int_{0}^{2t}2p(u)p(2t-u)du\]</span></p>
+<p>Integrating to get cumulative distribution:</p>
+<p><span class="math">\[cdf(k)=\int_{0}^{\infty}p_2(z)e^{\frac{-z^2 k^2}{2}}dz = 0.1\]</span></p>
+<p>The following <a href="http://maxima.sourceforge.net">Maxima</a> code can solve the above equation to get <span class="math">\(k \approx 0.68860849\)</span></p>
+<pre class="maxima"><code>assume(x&gt;0,y&gt;0,x&lt;=y,u&gt;0,v&gt;0,v&lt;=u,z&gt;0);
+f(x,y):=15120*(1-exp(-x^2/2))^5*(exp(-x^2/2)-exp(-y^2/2))^2*exp(-y^2/2)*x*exp(-x^2/2)*y*exp(-y^2/2);
+p(u):=romberg(f((u-v)/2,(u+v)/2)/2,v,0,u);
+p2(t):=romberg(2*p(u)*p(2*t-u),u,0,2*t);
+cdf(k):=romberg(p2(z)*exp(-z^2*k^2/2),z,0,10);
+find_root(cdf(k)=0.1,k,0.6,0.8);</code></pre>
+<p><strong>Rayleigh 20</strong> factor 1.76 was determined approximately using Monte Carlo simulations, but we can get approximate value in closed from. With infinite number of shots, expected value of miss radius (Rayleigh estimator) is</p>
+<p><span class="math">\[r=E(x)=\int_{0}^{\infty}f(x) x dx = \sqrt{\frac{\pi}{2}}\]</span></p>
+<p>From cumulative distribution function of miss radius</p>
+<p><span class="math">\[F(R_{90})=1-e^{-\frac{R_{90}^2}{2}} = 0.9, R_{90}=\sqrt{2ln(10)}\]</span></p>
+<p>therefore the factor is</p>
+<p><span class="math">\[k = \frac{R_{90}}{r} = \sqrt{\frac{4 ln(10)}{\pi}} \approx 1.71223316\]</span></p>
+<p>Rayleigh distribution is asymmetric so this is a lower bound on <span class="math">\(k\)</span>.</p>
+</div>
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+$(document).ready(function () {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+});
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
