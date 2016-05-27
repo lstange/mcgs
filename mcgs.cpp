@@ -322,6 +322,7 @@ int main(int argc, char* argv[])
   double miss_radius_to_r90hat_factor_rounded = 0;
   double group_size_to_r90hat_factor = 0;
   double sixtynine_to_r90hat_factor = 0;
+  double rayleigh_to_r90hat_factor = 0;
   std::pair<int, int> sixtynine_rank( (shots_in_group * 6 - 5) / 10 // 60th percentile
                                     , (shots_in_group * 9 - 5) / 10 // 90th percentile
                                     );
@@ -347,6 +348,9 @@ int main(int argc, char* argv[])
         miss_radius_to_r90hat_factor_rounded = 1.2;
         group_size_to_r90hat_factor = 0.75;
         break;
+      case 20: 
+        rayleigh_to_r90hat_factor = 1.76;
+        break;
     }
   } else if (groups_in_experiment == 2) {
     switch (shots_in_group) {
@@ -357,7 +361,7 @@ int main(int argc, char* argv[])
         // p2(t):=''(integrate(2*p(u)*p(2*t-u),u,0,2*t));
         // c2(k):=romberg(p2(q)*exp(-q^2*k^2/2),q,0,10);
         // find_root(c2(k)=1-0.9, k, 1, 3);
-        miss_radius_to_r90hat_factor = 2.221976492694745;
+        miss_radius_to_r90hat_factor = 2.22197649;
         miss_radius_to_r90hat_factor_rounded = 2.2;
         break;
       case 3:
@@ -367,7 +371,7 @@ int main(int argc, char* argv[])
         // p2(t):=''(integrate(2*p(u)*p(2*t-u),u,0,2*t));
         // c2(k):=romberg(p2(q)*exp(-q^2*k^2/2),q,0,10);
         // find_root(c2(k)=1-0.9, k, 1, 3);
-        miss_radius_to_r90hat_factor = 1.28875916205279;
+        miss_radius_to_r90hat_factor = 1.28875916;
         miss_radius_to_r90hat_factor_rounded = 1.3;
         break;
       case 5:
@@ -377,7 +381,7 @@ int main(int argc, char* argv[])
         // p2(t):=romberg(2*p(u)*p(2*t-u),u,0,2*t);
         // c2(k):=romberg(p2(q)*exp(-q^2*k^2/2),q,0,10);
         // find_root(c2(k)=1-0.9, k, 1, 1.3);
-        miss_radius_to_r90hat_factor = 1.103437984667636;
+        miss_radius_to_r90hat_factor = 1.10343798;
         miss_radius_to_r90hat_factor_rounded = 1;
         break;
       case 10:
@@ -387,8 +391,16 @@ int main(int argc, char* argv[])
         // p2(t):=romberg(2*p(u)*p(2*t-u),u,0,2*t);
         // c2(k):=romberg(p2(q)*exp(-q^2*k^2/2),q,0,10);
         // find_root(c2(k)=1-0.9, k, 1.1, 1.15);
-        miss_radius_to_r90hat_factor = 1.149216075023736;
+        miss_radius_to_r90hat_factor = 1.149216;
         miss_radius_to_r90hat_factor_rounded = 1.15;
+        break;
+    }
+  } else if (groups_in_experiment == 4) {
+    switch (shots_in_group) {
+      case  5:
+        group_size_to_r90hat_factor = 0.723;
+        break;
+      default:
         break;
     }
   } else if (groups_in_experiment == 5) {
@@ -425,8 +437,36 @@ int main(int argc, char* argv[])
         break;
     }
   }
-  if (shots_in_group > 7) {
-    sixtynine_to_r90hat_factor = 0.7;
+  if (shots_in_group == 10) {
+    switch (groups_in_experiment) {
+      case  1:
+        // wxMaxima:
+        // assume(x>0,y>0,x<=y,k>0);
+        // pdf(x,y):=3*7*8*9*10*(1-exp(-x^2/2))^5*(exp(-x^2/2)-exp(-y^2/2))^2*exp(-y^2/2)*x*exp(-x^2/2)*y*exp(-y^2/2);
+        // find_root(romberg(integrate(pdf(x,y)*(1-exp(-(k*(x+y))^2/2)),y,x,inf),x,0,50)=9/10,k,0.6,0.8);
+        sixtynine_to_r90hat_factor = 0.7076687;
+        break;
+      case 2:
+        // wxMaxima:
+        // assume(x>0,y>0,x<=y);
+        // pdf(x,y):=15120*(1-exp(-x^2/2))^5*(exp(-x^2/2)-exp(-y^2/2))^2*exp(-y^2/2)*x*exp(-x^2/2)*y*exp(-y^2/2);
+        // assume(u>0,v>0,v<=u);
+        // p2(u):=romberg(pdf((u-v)/2,(u+v)/2)/2,v,0,u);
+        // p2s(t):=romberg(2*p2(u)*p2(2*t-u),u,0,2*t);
+        // c2(k):=romberg(p2s(q)*exp(-q^2*k^2/2),q,0,10);
+        // find_root(c2(k)=1/10, k, 0.6, 0.8);
+        sixtynine_to_r90hat_factor = 0.68860849;
+        break;
+      default:
+        // wxMaxima:
+        // assume(x>0,y>0,x<=y);
+        // pdf(x,y):=3*7*8*9*10*(1-exp(-x^2/2))^5*(exp(-x^2/2)-exp(-y^2/2))^2*exp(-y^2/2)*x*exp(-x^2/2)*y*exp(-y^2/2);
+        // float(sqrt(2*log(10)))/float(integrate(integrate(pdf(x,y)*(x+y),y,x,inf),x,0,inf));
+        sixtynine_to_r90hat_factor = 0.67024464399177286;
+        break;
+    }
+  } else if (shots_in_group > 7) {
+    sixtynine_to_r90hat_factor = 0.69;
   }
   DescriptiveStat gs_s, gs_s2, bgs_s, ags_s, ags_s2, mgs_s, amr_s, aamr_s, rayleigh_s, median_r_s;
   DescriptiveStat rayleigh_mle, worst_r_s, second_worst_r_s;
@@ -437,14 +477,16 @@ int main(int argc, char* argv[])
   int hits_within_r90hat2 = 0;
   int hits_within_r90hat3 = 0;
   int hits_within_r90hat4 = 0;
+  int hits_within_r90hat5 = 0;
   double r50hat = 0;
   double r90hat = 0;
   double r90hat2 = 0;
   double r90hat3 = 0;
   double r90hat4 = 0;
+  double r90hat5 = 0;
   for (int experiment = 0; experiment < experiments; experiment++) {
     double best_gs = 0;
-    DescriptiveStat gs, gs2, amr, wr, swr, sixtynine;
+    DescriptiveStat gs, gs2, amr, wr, swr, sixtynine, rayleigh;
     std::vector<double> gsg_v;
     for (int j = 0; j < groups_in_experiment; j++) { 
       ShotGroup g; 
@@ -471,6 +513,7 @@ int main(int argc, char* argv[])
           if (ri < r90hat2) hits_within_r90hat2++;
           if (ri < r90hat3) hits_within_r90hat3++;
           if (ri < r90hat4) hits_within_r90hat4++;
+          if (ri < r90hat5) hits_within_r90hat5++;
         }
       } // Next shot
 
@@ -496,8 +539,9 @@ int main(int argc, char* argv[])
       amr_s.push(this_amr);
       amr.push(this_amr);
 
-      double rayleigh = rayleigh_cep_factor * accumulate(r.begin(), r.end(), 0.);
-      rayleigh_s.push(rayleigh);
+      double this_rayleigh = rayleigh_cep_factor * accumulate(r.begin(), r.end(), 0.);
+      rayleigh.push(this_rayleigh);
+      rayleigh_s.push(this_rayleigh);
       rayleigh_mle.push(rayleigh_mle_factor * sqrt(accumulate(r2.begin(), r2.end(), 0.)));
       
       double this_wr = kth_miss_radius(r, shots_in_group - 1);
@@ -514,11 +558,13 @@ int main(int argc, char* argv[])
       if (sixtynine_rank.first != sixtynine_rank.second) {
         double this_sixtynine = kth_miss_radius(r, sixtynine_rank.first) + kth_miss_radius(r, sixtynine_rank.second);
         sixtynine.push(this_sixtynine);
-        // Remember all rank pairs, will choose the best one later
-        for (int rank_a = 0; rank_a < shots_in_group - 1; rank_a++) {
-          for (int rank_b = rank_a + 1; rank_b < shots_in_group; rank_b++) {
-            double e = kth_miss_radius(r, rank_a) + kth_miss_radius(r, rank_b);
-            sixtynine_r_s[std::make_pair(rank_a, rank_b)].push(e);
+        if (shots_in_group <= 100) {
+          // Remember all rank pairs, will choose the best one later
+          for (int rank_a = 0; rank_a < shots_in_group - 1; rank_a++) {
+            for (int rank_b = rank_a + 1; rank_b < shots_in_group; rank_b++) {
+              double e = kth_miss_radius(r, rank_a) + kth_miss_radius(r, rank_b);
+              sixtynine_r_s[std::make_pair(rank_a, rank_b)].push(e);
+            }
           }
         }
       }
@@ -542,7 +588,8 @@ int main(int argc, char* argv[])
       r90hat2 = swr.mean() * miss_radius_to_r90hat_factor_rounded;
       r90hat3 = gs2.mean() * group_size_to_r90hat_factor;
     }
-    r90hat4 = sixtynine.mean()  * sixtynine_to_r90hat_factor;
+    r90hat4 = sixtynine.mean() * sixtynine_to_r90hat_factor;
+    r90hat5 = rayleigh.mean() * rayleigh_to_r90hat_factor / sqrt(4 * log(2) / M_PI);
   } // Next experiment
   if (groups_in_experiment == 1) {
     gs_s.show("Group size:");
@@ -573,11 +620,18 @@ int main(int argc, char* argv[])
     }
     worst_r_s.show("Worst miss radius:", theoretical_worst);
     double theoretical_second_worst = 0;
+    double theoretical_sixtynine = 0;
     if (proportion_of_outliers == 0) {
       switch (shots_in_group) {
         case 10:
           // wxMaxima: float(integrate(90*x*(1-exp(-x^2/2))^8*exp(-x^2)*x, x, 0, inf));
           theoretical_second_worst = 1.929379316672818;
+          
+          // wxMaxima:
+          // assume(x>0,y>0,x<=y);
+          // pdf(x,y):=3*7*8*9*10*(1-exp(-x^2/2))^5*(exp(-x^2/2)-exp(-y^2/2))^2*exp(-y^2/2)*x*exp(-x^2/2)*y*exp(-y^2/2);
+          // integrate(integrate(pdf(x,y)*(x+y),y,x,inf),x,0,inf);
+          theoretical_sixtynine = 3.201765293569168;
           break;
       }
     }
@@ -603,7 +657,7 @@ int main(int argc, char* argv[])
           if (it != sixtynine_r_s.end()) {
             std::cout << "60/90 pair: R" << (sixtynine_rank.first  + 1) << ":" << shots_in_group 
                       <<            "+R" << (sixtynine_rank.second + 1) << ":" << shots_in_group;
-            it->second.show(",");
+            it->second.show(",", theoretical_sixtynine);
           }
         }
       }
@@ -618,7 +672,7 @@ int main(int argc, char* argv[])
     swr_s.show("Average second worst miss radius:");
     if (sixtynine_rank.first != sixtynine_rank.second) {
       std::cout << "Average R" << (sixtynine_rank.first  + 1) << ":" << shots_in_group 
-                << " + R"      << (sixtynine_rank.second + 1) << ":" << shots_in_group;
+                << "+R"        << (sixtynine_rank.second + 1) << ":" << shots_in_group;
       sixtynine_s.show(":");
     }
   }  
@@ -643,6 +697,11 @@ int main(int argc, char* argv[])
               << " * (R" << (sixtynine_rank.first  + 1) << ":" << shots_in_group 
               << " + R"    << (sixtynine_rank.second + 1) << ":" << shots_in_group << "): "
               << 100. * hits_within_r90hat4 / denominator << "%\n";
+  }
+  if (rayleigh_to_r90hat_factor > 0) {
+    std::cout << "Percent of hits within " << rayleigh_to_r90hat_factor 
+              << " * average miss radius: " 
+              << 100. * hits_within_r90hat5 / denominator << "%\n";
   }
   return 0;
 }
