@@ -47,7 +47,6 @@ group_size <- function(h)
 
 experiment <- function(ymax=3, yoffset=0, eccentricity=0, flier_rate=0, flier_severity=3, legendpos='topright')
 {
-  par(mar=c(2,2,1,1))
   gs55 <- numeric(n)
   kr9 <- numeric(n)
   kr69 <- numeric(n)
@@ -94,7 +93,7 @@ experiment <- function(ymax=3, yoffset=0, eccentricity=0, flier_rate=0, flier_se
     o[i] <- r;
   }
   hist55 <- hist(gs55, plot=F, breaks=50);
-  plot(smooth.spline(hist55$mids, hist55$density), col='red', type='l', xlab='R90', ylab='PDF', xlim=c(0,5), ylim=c(0,ymax));
+  plot(smooth.spline(hist55$mids, hist55$density), col='red', type='l', xlab='Estimated R90', ylab='PDF', xlim=c(0,5), ylim=c(0,ymax));
   hist9 <- hist(kr9, plot=F, breaks=50);
   lines(smooth.spline(hist9$mids, hist9$density), col='green', lty=2);
   hist69 <- hist(kr69, plot=F, breaks=50);
@@ -156,12 +155,17 @@ Based on observed shots, estimate R<sub>90</sub> (the radius of a circle that is
 
 ###Experiment 0: Bivariate Normal Distribution
 
-Start with establishing the baseline. Pull impact coordinates from standard bivariate normal distibution, estimate R<sub>90</sub>, pull another impact, see if it lands inside R<sub>90</sub>. Repeat $`r n`$ times and plot the distribution of R<sub>90</sub>.
+Start with establishing the baseline. Pull impact coordinates from standard bivariate normal distibution, estimate R<sub>90</sub>, pull another impact, see if it lands inside R<sub>90</sub>. 
+
+Example groups:
 
 ```{r fig_00, echo=FALSE, message=FALSE, warning=FALSE, fig.width=6, fig.height=1.5, dpi=150}
 set.seed(42)
 group_examples()
 ```
+
+Distribution of R<sub>90</sub> estimates based on $`r n`$ simulations:
+
 ```{r fig_0, echo=FALSE, message=FALSE, warning=FALSE, fig.width=6, fig.height=4, dpi=150}
 e <- experiment(ymax=1.8);
 ```
@@ -351,7 +355,7 @@ cdf(k):=romberg(p2(z)*exp(-z^2*k^2/2),z,0,10);
 find_root(cdf(k)=0.1,k,0.6,0.8);
 ```
 
-**Rayleigh 20** factor 1.76 was determined approximately using Monte Carlo simulations, but we can get approximate value in closed from. With infinite number of shots, expected value of miss radius (Rayleigh estimator) is 
+**Rayleigh 20** factor 1.76 was determined approximately using Monte Carlo simulations, but we can also get lower bound in closed from. With infinite number of shots, expected value of miss radius (Rayleigh estimator) is 
 
 $$r=E(x)=\int_{0}^{\infty}f(x) x dx = \sqrt{\frac{\pi}{2}}$$
 
