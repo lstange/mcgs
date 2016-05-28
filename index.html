@@ -12,18 +12,18 @@
 
 <title>R90</title>
 
-<script src="r90_files/jquery-1.11.0/jquery.min.js"></script>
+<script src="index_files/jquery-1.11.0/jquery.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<link href="r90_files/bootstrap-3.3.1/css/bootstrap.min.css" rel="stylesheet" />
-<script src="r90_files/bootstrap-3.3.1/js/bootstrap.min.js"></script>
-<script src="r90_files/bootstrap-3.3.1/shim/html5shiv.min.js"></script>
-<script src="r90_files/bootstrap-3.3.1/shim/respond.min.js"></script>
+<link href="index_files/bootstrap-3.3.1/css/bootstrap.min.css" rel="stylesheet" />
+<script src="index_files/bootstrap-3.3.1/js/bootstrap.min.js"></script>
+<script src="index_files/bootstrap-3.3.1/shim/html5shiv.min.js"></script>
+<script src="index_files/bootstrap-3.3.1/shim/respond.min.js"></script>
 
 <style type="text/css">code{white-space: pre;}</style>
 <link rel="stylesheet"
-      href="r90_files/highlight/default.css"
+      href="index_files/highlight/default.css"
       type="text/css" />
-<script src="r90_files/highlight/highlight.js"></script>
+<script src="index_files/highlight/highlight.js"></script>
 <style type="text/css">
   pre:not([class]) {
     background-color: white;
@@ -84,7 +84,7 @@ img {
 <div id="experiment-0-bivariate-normal-distribution" class="section level3">
 <h3>Experiment 0: Bivariate Normal Distribution</h3>
 <p>Start with establishing the baseline. Pull impact coordinates from standard bivariate normal distibution, estimate R<sub>90</sub>, pull another impact, see if it lands inside R<sub>90</sub>. Repeat <span class="math">\(10^{5}\)</span> times and plot the distribution of R<sub>90</sub>.</p>
-<p><img src="r90_files/figure-html/fig_00-1.png" title="" alt="" width="900" /> <img src="r90_files/figure-html/fig_0-1.png" title="" alt="" width="900" /></p>
+<p><img src="index_files/figure-html/fig_00-1.png" title="" alt="" width="900" /> <img src="index_files/figure-html/fig_0-1.png" title="" alt="" width="900" /></p>
 <table>
 <thead>
 <tr class="header">
@@ -128,7 +128,7 @@ img {
 <div id="experiment-1-offset-zero" class="section level3">
 <h3>Experiment 1: Offset Zero</h3>
 <p>Start by introducing some vertical offset (constant point of impact shift). Not much, just one <span class="math">\(\sigma\)</span>. In practice this is pretty common. Constant wind, change in temperature and therefore muzzle velocity, or errors in determining range can all introduce systemic error.</p>
-<p><img src="r90_files/figure-html/fig_11-1.png" title="" alt="" width="900" /> <img src="r90_files/figure-html/fig_1-1.png" title="" alt="" width="900" /></p>
+<p><img src="index_files/figure-html/fig_11-1.png" title="" alt="" width="900" /> <img src="index_files/figure-html/fig_1-1.png" title="" alt="" width="900" /></p>
 <table>
 <thead>
 <tr class="header">
@@ -177,7 +177,7 @@ img {
 </ul>
 <p>A robust estimator that is not particularly sensitive to occasional flier is preferable.</p>
 <p>In this experiment we will simulate fliers by increasing standard deviation by a factor of 5 with 5% probability.</p>
-<p><img src="r90_files/figure-html/fig_22-1.png" title="" alt="" width="900" /> <img src="r90_files/figure-html/fig_2-1.png" title="" alt="" width="900" /></p>
+<p><img src="index_files/figure-html/fig_22-1.png" title="" alt="" width="900" /> <img src="index_files/figure-html/fig_2-1.png" title="" alt="" width="900" /></p>
 <table>
 <thead>
 <tr class="header">
@@ -220,7 +220,7 @@ img {
 <h3>Experiment 3: Unequal Variance</h3>
 <p>Now let’s see what happens when vertical and horizontal dispersions are different. In this experiment we flatten the groups - increase horizontal dispersion and decrease vertical dispersion.</p>
 <p>This is common in practice. For example, ammo-induced variance in muzzle velocity affects primarily vertical impact coordinate, while wind affects mostly horizontal coordinate.</p>
-<p><img src="r90_files/figure-html/fig_33-1.png" title="" alt="" width="900" /> <img src="r90_files/figure-html/fig_3-1.png" title="" alt="" width="900" /></p>
+<p><img src="index_files/figure-html/fig_33-1.png" title="" alt="" width="900" /> <img src="index_files/figure-html/fig_3-1.png" title="" alt="" width="900" /></p>
 <table>
 <thead>
 <tr class="header">
@@ -261,7 +261,7 @@ img {
 <div id="experiment-4-all-together-now" class="section level3">
 <h3>Experiment 4: All Together Now</h3>
 <p>Now combine all factors together: increase standard deviation by a factor of 5 with 5% probability, add one <span class="math">\(\sigma\)</span> vertical offset, and flatten the groups.</p>
-<p><img src="r90_files/figure-html/fig_44-1.png" title="" alt="" width="900" /> <img src="r90_files/figure-html/fig_4-1.png" title="" alt="" width="900" /></p>
+<p><img src="index_files/figure-html/fig_44-1.png" title="" alt="" width="900" /> <img src="index_files/figure-html/fig_4-1.png" title="" alt="" width="900" /></p>
 <table>
 <thead>
 <tr class="header">

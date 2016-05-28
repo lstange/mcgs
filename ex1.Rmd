@@ -1,0 +1,117 @@
+---
+title: "Excluding One"
+output: 
+  html_document: 
+    self_contained: no
+---
+
+```{r functions, echo=FALSE, message=FALSE, warning=FALSE}
+n <- 10000
+
+bivariate_normal <- function(n, sd = 1, flier_rate = 0, flier_severity = 3)
+{
+  d <- data.frame(u=runif(n), v=runif(n), z=runif(n))
+  
+  # Contaminated normal if fliers requested
+  d$sd <- ifelse(d$z < flier_rate, sd * flier_severity, sd)
+
+  # Box-Muller transform
+  d$r = d$sd * sqrt(-2 * log(d$u))
+  d$x = d$r * cos(2 * pi * d$v)
+  d$y = d$r * sin(2 * pi * d$v)
+
+  return (d)
+}
+
+group_size <- function(h)
+{
+  n <- nrow(h) 
+  if (n < 2) {
+    return (0)
+  }
+  best_so_far <- sqrt((h$x[1]-h$x[2])*(h$x[1]-h$x[2])+(h$y[1]-h$y[2])*(h$y[1]-h$y[2]))
+  for (i in 1:(n - 1)) {
+    for (j in (i + 1):n) {
+      candidate = sqrt((h$x[i]-h$x[j])*(h$x[i]-h$x[j])+(h$y[i]-h$y[j])*(h$y[i]-h$y[j]))
+      if (best_so_far < candidate) {
+        best_so_far = candidate
+      }
+    }
+  }
+  return (best_so_far)
+}
+
+excluding_worst <- function(h)
+{
+  n <- nrow(h) 
+
+  # With only two shots, excluding one results in a zero size group
+  if (n < 3) {
+    return (0)
+  }
+      
+  # Find the two impacts defining extreme spread
+  best_so_far <- sqrt((h$x[1]-h$x[2])*(h$x[1]-h$x[2])+(h$y[1]-h$y[2])*(h$y[1]-h$y[2]))
+  index_a <- 1
+  index_b <- 2
+  for (i in 1:(n - 1)) {
+    for (j in (i + 1):n) {
+      candidate = sqrt((h$x[i]-h$x[j])*(h$x[i]-h$x[j])+(h$y[i]-h$y[j])*(h$y[i]-h$y[j]))
+      if (best_so_far < candidate) {
+        best_so_far = candidate
+        index_a = i;
+        index_b = j;
+      }
+    }
+  }
+
+  # Worst shot must be one of the impacts defining extreme spread.
+  # Calculate group size without either one, return the smaller number.
+  best_so_far_excluding_a <- 0
+  best_so_far_excluding_b <- 0
+  for (i in 1:(n - 1)) {
+    for (j in (i + 1):n) {
+      candidate = sqrt((h$x[i]-h$x[j])*(h$x[i]-h$x[j])+(h$y[i]-h$y[j])*(h$y[i]-h$y[j]))
+      if (i != index_a & j != index_a & best_so_far_excluding_a < candidate) {
+        best_so_far_excluding_a <- candidate
+      }
+      if (i != index_b & j != index_b & best_so_far_excluding_b < candidate) {
+        best_so_far_excluding_b <- candidate
+      }
+    }
+  }
+  return (min(best_so_far_excluding_a, best_so_far_excluding_b))
+}
+
+experiment <- function(main, flier_rate = 0, flier_severity = 3)
+{
+  five5 <- numeric(n)
+  four5 <- numeric(n)
+  two10ex1 <- numeric(n)
+  for (k in 1:n) {
+    a <- bivariate_normal(5, flier_rate = flier_rate, flier_severity = flier_severity)
+    b <- bivariate_normal(5, flier_rate = flier_rate, flier_severity = flier_severity)
+    c <- bivariate_normal(5, flier_rate = flier_rate, flier_severity = flier_severity)
+    d <- bivariate_normal(5, flier_rate = flier_rate, flier_severity = flier_severity)
+    e <- bivariate_normal(5, flier_rate = flier_rate, flier_severity = flier_severity)
+    five5[k] <- (group_size(a) + group_size(b) + group_size(c) + group_size(d) + group_size(e)) / 5
+    four5[k] <- (group_size(a) + group_size(b) + group_size(c) + group_size(d)) / 4
+    two10ex1[k] <- (excluding_worst(rbind(a,b)) + excluding_worst(rbind(c,d))) / 2 
+  }
+  hist55 <- hist(five5, plot=F, breaks=50);
+  plot(smooth.spline(hist55$mids, hist55$density), col='red', type='l', xlab='Average group size', ylab='PDF', xlim=c(0,5), ylim=c(0,1.2), main=main);
+  hist45 <- hist(four5, plot=F, breaks=50);
+  lines(smooth.spline(hist45$mids, hist45$density), col='green', lty=2);
+  hist210 <- hist(two10ex1, plot=F, breaks=50);
+  lines(smooth.spline(hist210$mids, hist210$density), col='blue', lty=3);
+  legend("topleft", inset=.05, c('Five 5-shot groups','Four 5-shot groups', 'Two 10-shot groups\nexcl. worst shot in each'), lwd=2, lty=c(1,2,3), col=c('red','green','blue'), bty='n');
+}
+```
+
+```{r ex1,  echo=FALSE, message=FALSE, warning=FALSE, fig.width=6, fig.height=6, dpi=150}
+experiment(main='Normal Distribution');
+```
+
+```{r ex2,  echo=FALSE, message=FALSE, warning=FALSE, fig.width=6, fig.height=6, dpi=150}
+experiment(main='3% Fliers 3x Worse', flier_rate=0.03, flier_severity=3);
+```
