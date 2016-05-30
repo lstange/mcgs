@@ -77,14 +77,18 @@ img {
 <div id="estimators" class="section level3">
 <h3>Estimators</h3>
 <p><strong>5x5</strong>: Measure average extreme spread of five 5-shot groups. This common method is used by NRA magazine <em>American Rifleman</em> to report firearm accuracy. Multiply by 0.72 to get estimate of R<sub>90</sub>. This assumes perfect zero.</p>
-<p><strong>2x10 (9)</strong>: Measure 9<sup>th</sup> miss radius R<sub>9:10</sub> in each of the two 10 shot groups, take the average, multiply by 1.15 to get estimate of R<sub>90</sub>.</p>
-<p><strong>2x10 (6&amp;9)</strong>: In a 10 shot group, add 6<sup>th</sup> miss radius R<sub>6:10</sub> and 9<sup>th</sup> miss radius R<sub>9:10</sub>. Do it again with the second group and take the average. Multiply by 0.69 to get estimate of R<sub>90</sub>.</p>
+<p><strong>2x10 (9)</strong>: Measure 9<sup>th</sup>-smallest miss radius R<sub>9:10</sub> in each of the two 10 shot groups, take the average, multiply by 1.15 to get estimate of R<sub>90</sub>.</p>
+<p><strong>2x10 (6&amp;9)</strong>: In a 10 shot group, add 6<sup>th</sup>-smallest miss radius R<sub>6:10</sub> and 9<sup>th</sup>-smallest miss radius R<sub>9:10</sub>. Do it again with the second group and take the average. Multiply by 0.69 to get estimate of R<sub>90</sub>.</p>
 <p><strong>Rayleigh 20</strong>: Take the average of 20 miss radiuses, multiply by 1.76 to get estimate of R<sub>90</sub>.</p>
+<p><strong>MLE 20</strong>: Take the sum of squares of 20 miss radiuses, multiply by factor shown in Appendix to get estimate of R<sub>90</sub>.</p>
 </div>
 <div id="experiment-0-bivariate-normal-distribution" class="section level3">
 <h3>Experiment 0: Bivariate Normal Distribution</h3>
-<p>Start with establishing the baseline. Pull impact coordinates from standard bivariate normal distibution, estimate R<sub>90</sub>, pull another impact, see if it lands inside R<sub>90</sub>. Repeat <span class="math">\(10^{5}\)</span> times and plot the distribution of R<sub>90</sub>.</p>
-<p><img src="index_files/figure-html/fig_00-1.png" title="" alt="" width="900" /> <img src="index_files/figure-html/fig_0-1.png" title="" alt="" width="900" /></p>
+<p>Start with establishing the baseline. Pull impact coordinates from standard bivariate normal distibution, estimate R<sub>90</sub>, pull another impact, see if it lands inside R<sub>90</sub>. Compare root mean square error (RMSE) and mean absolute error (MAE) of different estimators.</p>
+<p>Example groups:</p>
+<p><img src="index_files/figure-html/fig_00-1.png" title="" alt="" width="900" /></p>
+<p>Distribution of R<sub>90</sub> estimates based on <span class="math">\(10^{5}\)</span> simulations:</p>
+<p><img src="index_files/figure-html/fig_0-1.png" title="" alt="" width="900" /></p>
 <table>
 <thead>
 <tr class="header">
@@ -115,14 +119,20 @@ img {
 </tr>
 <tr class="even">
 <td align="left">Rayleigh 20</td>
-<td align="left">90.446%</td>
-<td align="left">0.238</td>
-<td align="left">0.435</td>
+<td align="left">90.16%</td>
+<td align="left">0.264</td>
+<td align="left">0.458</td>
+</tr>
+<tr class="odd">
+<td align="left">MLE 20</td>
+<td align="left">89.001%</td>
+<td align="left">0.241</td>
+<td align="left">0.438</td>
 </tr>
 </tbody>
 </table>
 <p>6&amp;9 estimator with 20 shots and 4 measurements works about as well as 5x5 estimator with 25 shots and 5 measurements.</p>
-<p>Rayleigh estimator is better, but it requires 20 measurments.</p>
+<p>Rayleigh estimator is just slightly better, but it requires 20 measurments. MLE is noticeably better, but requires even more work.</p>
 <p>Now let’s shake the ladder - see how well the estimators work when underlying assumptions are violated.</p>
 </div>
 <div id="experiment-1-offset-zero" class="section level3">
@@ -159,9 +169,15 @@ img {
 </tr>
 <tr class="even">
 <td align="left">Rayleigh 20</td>
-<td align="left">91.335%</td>
-<td align="left">0.301</td>
-<td align="left">0.489</td>
+<td align="left">91.05%</td>
+<td align="left">0.33</td>
+<td align="left">0.512</td>
+</tr>
+<tr class="odd">
+<td align="left">MLE 20</td>
+<td align="left">89.546%</td>
+<td align="left">0.28</td>
+<td align="left">0.472</td>
 </tr>
 </tbody>
 </table>
@@ -208,13 +224,19 @@ img {
 </tr>
 <tr class="even">
 <td align="left">Rayleigh 20</td>
-<td align="left">90.954%</td>
-<td align="left">0.578</td>
-<td align="left">0.653</td>
+<td align="left">90.466%</td>
+<td align="left">0.633</td>
+<td align="left">0.679</td>
+</tr>
+<tr class="odd">
+<td align="left">MLE 20</td>
+<td align="left">90.927%</td>
+<td align="left">1.25</td>
+<td align="left">0.924</td>
 </tr>
 </tbody>
 </table>
-<p>9 and 6&amp;9 estimators are more robust (less affected by fliers).</p>
+<p>Now 6&amp;9 estimator outperforms others, and MLE is the worst.</p>
 </div>
 <div id="experiment-3-unequal-variance" class="section level3">
 <h3>Experiment 3: Unequal Variance</h3>
@@ -251,9 +273,15 @@ img {
 </tr>
 <tr class="even">
 <td align="left">Rayleigh 20</td>
-<td align="left">87.66%</td>
-<td align="left">0.314</td>
-<td align="left">0.504</td>
+<td align="left">87.55%</td>
+<td align="left">0.347</td>
+<td align="left">0.529</td>
+</tr>
+<tr class="odd">
+<td align="left">MLE 20</td>
+<td align="left">87.559%</td>
+<td align="left">0.348</td>
+<td align="left">0.529</td>
 </tr>
 </tbody>
 </table>
@@ -292,18 +320,68 @@ img {
 </tr>
 <tr class="even">
 <td align="left">Rayleigh 20</td>
-<td align="left">91.754%</td>
-<td align="left">0.723</td>
-<td align="left">0.727</td>
+<td align="left">91.307%</td>
+<td align="left">0.779</td>
+<td align="left">0.749</td>
+</tr>
+<tr class="odd">
+<td align="left">MLE 20</td>
+<td align="left">91.192%</td>
+<td align="left">1.43</td>
+<td align="left">0.965</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="experiment-5-actual-data" class="section level3">
+<h3>Experiment 5: Actual Data</h3>
+<p>Finally let’s look at some real-world data: instead of generating impact coordinates with pseudorandom number generator, sample with replacement from 341 actual shots. Only miss radiuses were recorded, so 5x5 estimator is not shown.</p>
+<p><img src="index_files/figure-html/fig_5-1.png" title="" alt="" width="900" /></p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">Estimator</th>
+<th align="left">Hits within estimated R<sub>90</sub></th>
+<th align="left">RMSE</th>
+<th align="left">MAE</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">2x10 (9)</td>
+<td align="left">89.401%</td>
+<td align="left">10.2</td>
+<td align="left">2.61</td>
+</tr>
+<tr class="even">
+<td align="left">2x10 (6&amp;9)</td>
+<td align="left">88.215%</td>
+<td align="left">7.87</td>
+<td align="left">2.41</td>
+</tr>
+<tr class="odd">
+<td align="left">Rayleigh 20</td>
+<td align="left">88.141%</td>
+<td align="left">8.23</td>
+<td align="left">2.49</td>
+</tr>
+<tr class="even">
+<td align="left">MLE 20</td>
+<td align="left">88.914%</td>
+<td align="left">14</td>
+<td align="left">2.99</td>
 </tr>
 </tbody>
 </table>
 </div>
 <div id="appendix" class="section level3">
 <h3>Appendix</h3>
-<p>This section describes where the magic numbers 0.72, 1.15, 0.69, and 1.76 came from.</p>
+<p>This section describes where the magic numbers came from.</p>
 <p><strong>5x5</strong> factor 0.72 was determined approximately using Monte Carlo simulations because there does not seem to be another way to do it.</p>
-<p><strong>2x10 (9)</strong> factor 1.15 can be obtained analytically. Assume miss radiuses of individual shots follow Rayleigh distribution with <span class="math">\(\sigma = 1\)</span>. Its probability density function is</p>
+<p><strong>2x10 (9)</strong> uses 9<sup>th</sup> smallest miss radius in 10 shot group because according to formula 3.13 in [1] optimum unbiased estimator from single order statistic R<sub>m:n</sub> is</p>
+<p><span class="math">\[m \approx 0.79681(n+1)-0.39841+\frac{1.16312}{n+1}\]</span></p>
+<p>For <span class="math">\(n=10\)</span> it falls right between 8 and 9, and R<sub>9:10</sub> (second worst miss radius) is easier to find on paper.</p>
+<p>Factor 1.15 can be obtained analytically. Assume miss radiuses of individual shots follow Rayleigh distribution with <span class="math">\(\sigma = 1\)</span>. Its probability density function is</p>
 <p><span class="math">\[f(x)=x e^{-\frac{x^2}{2}}\]</span></p>
 <p>and cumulative distribution function is</p>
 <p><span class="math">\[F(x)=1-e^{-\frac{x^2}{2}}\]</span></p>
@@ -341,13 +419,25 @@ p(u):=romberg(f((u-v)/2,(u+v)/2)/2,v,0,u);
 p2(t):=romberg(2*p(u)*p(2*t-u),u,0,2*t);
 cdf(k):=romberg(p2(z)*exp(-z^2*k^2/2),z,0,10);
 find_root(cdf(k)=0.1,k,0.6,0.8);</code></pre>
-<p><strong>Rayleigh 20</strong> factor 1.76 was determined approximately using Monte Carlo simulations, but we can get approximate value in closed from. With infinite number of shots, expected value of miss radius (Rayleigh estimator) is</p>
+<p><strong>Rayleigh 20</strong> factor 1.76 was determined approximately using Monte Carlo simulations, but we can also get lower bound in closed from. With infinite number of shots, expected value of miss radius (Rayleigh estimator) is</p>
 <p><span class="math">\[r=E(x)=\int_{0}^{\infty}f(x) x dx = \sqrt{\frac{\pi}{2}}\]</span></p>
 <p>From cumulative distribution function of miss radius</p>
 <p><span class="math">\[F(R_{90})=1-e^{-\frac{R_{90}^2}{2}} = 0.9, R_{90}=\sqrt{2ln(10)}\]</span></p>
 <p>therefore the factor is</p>
 <p><span class="math">\[k = \frac{R_{90}}{r} = \sqrt{\frac{4 ln(10)}{\pi}} \approx 1.71223316\]</span></p>
 <p>Rayleigh distribution is asymmetric so this is a lower bound on <span class="math">\(k\)</span>.</p>
+<p><strong>MLE 20</strong> factor for <span class="math">\(N=20\)</span> is</p>
+<p><span class="math">\[k=\frac{4^N N! (N-1)! \sqrt{N}}{(2N)!\sqrt{\pi}}\sqrt{2ln(10)}\sqrt{\frac{1}{2N}} \approx 0.3414341\]</span></p>
+<p><a href="http://maxima.sourceforge.net">Maxima</a> expression:</p>
+<pre class="maxima"><code>float(4^20*20!*(20-1)!*sqrt(20)*sqrt(2*log(10))/((2*20)!*sqrt(%pi)*sqrt(2*20)));</code></pre>
+</div>
+<div id="source-code" class="section level3">
+<h3>Source Code</h3>
+<p><a href="http://github.com/lstange/mcgs/" class="uri">http://github.com/lstange/mcgs/</a></p>
+</div>
+<div id="references" class="section level3">
+<h3>References</h3>
+<p>[1] M. M. Siddiqui (1964): “Statistical Inference for Rayleigh Distributions”, <em>Radio Science Journal of Research Vol 68D, No.9</em> <a href="http://ballistipedia.com/images/7/7a/Statistical_Inference_for_Rayleigh_Distributions_-_Siddiqui%2C_1964.pdf">http://ballistipedia.com/images/7/7a/Statistical_Inference_for_Rayleigh_Distributions_-_Siddiqui%2C_1964.pdf</a></p>
 </div>
 
 
