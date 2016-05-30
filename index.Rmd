@@ -6,7 +6,7 @@ output:
 ---
 
 ```{r functions,  echo=FALSE, message=FALSE, warning=FALSE}
-n <- 10000
+n <- 100000
 
 bivariate_normal <- function(n, yoffset=0, eccentricity=0, flier_rate=0, flier_severity=3)
 {
