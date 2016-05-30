@@ -6,7 +6,7 @@ output:
 ---
 
 ```{r functions,  echo=FALSE, message=FALSE, warning=FALSE}
-n <- 100000
+n <- 10000
 
 bivariate_normal <- function(n, yoffset=0, eccentricity=0, flier_rate=0, flier_severity=3)
 {
@@ -78,7 +78,7 @@ experiment <- function(main=NA, ymax=3, yoffset=0, eccentricity=0, flier_rate=0,
   hits20 <- 0
   hitsmle <- 0
   rr20_factor <- 1.76
-  mle20_factor <- 0.3414341
+  mle20_factor <- 0.35
   for (i in 1:n) {
     if (simulated) {
       e <- numeric(5);
@@ -209,7 +209,7 @@ Based on observed shots, estimate R<sub>90</sub> (the radius of a circle that is
 
 **Rayleigh 20**: Take the average of 20 miss radiuses, multiply by 1.76 to get estimate of R<sub>90</sub>.
 
-**MLE 20**: Take the sum of squares of 20 miss radiuses, multiply by factor shown in Appendix to get estimate of R<sub>90</sub>.
+**MLE 20**: Take square root of the sum of squares of 20 miss radiuses, multiply by 0.35 to get estimate of R<sub>90</sub>.
 
 ###Experiment 0: Bivariate Normal Distribution
 
@@ -230,11 +230,11 @@ e <- experiment(main='Bivariate Normal Distribution', ymax=1.8);
 
 | Estimator   | Hits within estimated R<sub>90</sub>| RMSE                   | MAE                 |
 |-------------|-------------------------------------|------------------------|---------------------|
-| 5x5         |               `r signif(e$hits55)`% | `r signif(e$rmse55,3)` |`r signif(e$mae55,3)`| 
-| 2x10 (9)    |                `r signif(e$hits9)`% | `r signif(e$rmse9,3)`  |`r signif(e$mae9,3)` |
-| 2x10 (6&9)  |               `r signif(e$hits69)`% | `r signif(e$rmse69,3)` |`r signif(e$mae69,3)`|
-| Rayleigh 20 |               `r signif(e$hits20)`% | `r signif(e$rmse20,3)` |`r signif(e$mae20,3)`|
-| MLE 20      |              `r signif(e$hitsmle)`% | `r signif(e$rmsemle,3)`|`r signif(e$maemle,3)`|
+| 5x5         |             `r signif(e$hits55,3)`% | `r signif(e$rmse55,3)` |`r signif(e$mae55,3)`| 
+| 2x10 (9)    |              `r signif(e$hits9,3)`% | `r signif(e$rmse9,3)`  |`r signif(e$mae9,3)` |
+| 2x10 (6&9)  |             `r signif(e$hits69,3)`% | `r signif(e$rmse69,3)` |`r signif(e$mae69,3)`|
+| Rayleigh 20 |             `r signif(e$hits20,3)`% | `r signif(e$rmse20,3)` |`r signif(e$mae20,3)`|
+| MLE 20      |            `r signif(e$hitsmle,3)`% | `r signif(e$rmsemle,3)`|`r signif(e$maemle,3)`|
 
 6&9 estimator with 20 shots and 4 measurements works about as well as 5x5 estimator with 25 shots and 5 measurements.
 
@@ -256,11 +256,11 @@ e <- experiment(main='Offset Zero', ymax=1.5, yoffset=1);
 
 | Estimator   | Hits within estimated R<sub>90</sub>| RMSE                   | MAE                 |
 |-------------|-------------------------------------|------------------------|---------------------|
-| 5x5         |               `r signif(e$hits55)`% | `r signif(e$rmse55,3)` |`r signif(e$mae55,3)`| 
-| 2x10 (9)    |                `r signif(e$hits9)`% | `r signif(e$rmse9,3)`  |`r signif(e$mae9,3)` |
-| 2x10 (6&9)  |               `r signif(e$hits69)`% | `r signif(e$rmse69,3)` |`r signif(e$mae69,3)`|
-| Rayleigh 20 |               `r signif(e$hits20)`% | `r signif(e$rmse20,3)` |`r signif(e$mae20,3)`|
-| MLE 20      |              `r signif(e$hitsmle)`% | `r signif(e$rmsemle,3)`|`r signif(e$maemle,3)`|
+| 5x5         |             `r signif(e$hits55,3)`% | `r signif(e$rmse55,3)` |`r signif(e$mae55,3)`| 
+| 2x10 (9)    |              `r signif(e$hits9,3)`% | `r signif(e$rmse9,3)`  |`r signif(e$mae9,3)` |
+| 2x10 (6&9)  |             `r signif(e$hits69,3)`% | `r signif(e$rmse69,3)` |`r signif(e$mae69,3)`|
+| Rayleigh 20 |             `r signif(e$hits20,3)`% | `r signif(e$rmse20,3)` |`r signif(e$mae20,3)`|
+| MLE 20      |            `r signif(e$hitsmle,3)`% | `r signif(e$rmsemle,3)`|`r signif(e$maemle,3)`|
 
 5x5 estimator now underestimates R<sub>90</sub>. This is expected because group size did not change, the group just moved away from the center of the target so average miss radius increased accordingly.
 
@@ -288,11 +288,11 @@ e <- experiment(main='Contaminated Normal Distribution', ymax=1.2, flier_rate=0.
 
 | Estimator   | Hits within estimated R<sub>90</sub>| RMSE                   | MAE                 |
 |-------------|-------------------------------------|------------------------|---------------------|
-| 5x5         |               `r signif(e$hits55)`% | `r signif(e$rmse55,3)` |`r signif(e$mae55,3)`| 
-| 2x10 (9)    |                `r signif(e$hits9)`% | `r signif(e$rmse9,3)`  |`r signif(e$mae9,3)` |
-| 2x10 (6&9)  |               `r signif(e$hits69)`% | `r signif(e$rmse69,3)` |`r signif(e$mae69,3)`|
-| Rayleigh 20 |               `r signif(e$hits20)`% | `r signif(e$rmse20,3)` |`r signif(e$mae20,3)`|
-| MLE 20      |              `r signif(e$hitsmle)`% | `r signif(e$rmsemle,3)`|`r signif(e$maemle,3)`|
+| 5x5         |             `r signif(e$hits55,3)`% | `r signif(e$rmse55,3)` |`r signif(e$mae55,3)`| 
+| 2x10 (9)    |              `r signif(e$hits9,3)`% | `r signif(e$rmse9,3)`  |`r signif(e$mae9,3)` |
+| 2x10 (6&9)  |             `r signif(e$hits69,3)`% | `r signif(e$rmse69,3)` |`r signif(e$mae69,3)`|
+| Rayleigh 20 |             `r signif(e$hits20,3)`% | `r signif(e$rmse20,3)` |`r signif(e$mae20,3)`|
+| MLE 20      |            `r signif(e$hitsmle,3)`% | `r signif(e$rmsemle,3)`|`r signif(e$maemle,3)`|
 
 Now 6&9 estimator outperforms others, and MLE is the worst.
 
@@ -312,11 +312,11 @@ e <- experiment(main='Unequal Variance', ymax=1.5, eccentricity=0.75);
 
 | Estimator   | Hits within estimated R<sub>90</sub>| RMSE                   | MAE                 |
 |-------------|-------------------------------------|------------------------|---------------------|
-| 5x5         |               `r signif(e$hits55)`% | `r signif(e$rmse55,3)` |`r signif(e$mae55,3)`| 
-| 2x10 (9)    |                `r signif(e$hits9)`% | `r signif(e$rmse9,3)`  |`r signif(e$mae9,3)` |
-| 2x10 (6&9)  |               `r signif(e$hits69)`% | `r signif(e$rmse69,3)` |`r signif(e$mae69,3)`|
-| Rayleigh 20 |               `r signif(e$hits20)`% | `r signif(e$rmse20,3)` |`r signif(e$mae20,3)`|
-| MLE 20      |              `r signif(e$hitsmle)`% | `r signif(e$rmsemle,3)`|`r signif(e$maemle,3)`|
+| 5x5         |             `r signif(e$hits55,3)`% | `r signif(e$rmse55,3)` |`r signif(e$mae55,3)`| 
+| 2x10 (9)    |              `r signif(e$hits9,3)`% | `r signif(e$rmse9,3)`  |`r signif(e$mae9,3)` |
+| 2x10 (6&9)  |             `r signif(e$hits69,3)`% | `r signif(e$rmse69,3)` |`r signif(e$mae69,3)`|
+| Rayleigh 20 |             `r signif(e$hits20,3)`% | `r signif(e$rmse20,3)` |`r signif(e$mae20,3)`|
+| MLE 20      |            `r signif(e$hitsmle,3)`% | `r signif(e$rmsemle,3)`|`r signif(e$maemle,3)`|
 
 ###Experiment 4: All Together Now
 
@@ -333,11 +333,11 @@ e <- experiment(main='All Factors', ymax=1, yoffset=1, eccentricity=0.75, flier_
 
 | Estimator   | Hits within estimated R<sub>90</sub>| RMSE                   | MAE                 |
 |-------------|-------------------------------------|------------------------|---------------------|
-| 5x5         |               `r signif(e$hits55)`% | `r signif(e$rmse55,3)` |`r signif(e$mae55,3)`| 
-| 2x10 (9)    |                `r signif(e$hits9)`% | `r signif(e$rmse9,3)`  |`r signif(e$mae9,3)` |
-| 2x10 (6&9)  |               `r signif(e$hits69)`% | `r signif(e$rmse69,3)` |`r signif(e$mae69,3)`|
-| Rayleigh 20 |               `r signif(e$hits20)`% | `r signif(e$rmse20,3)` |`r signif(e$mae20,3)`|
-| MLE 20      |              `r signif(e$hitsmle)`% | `r signif(e$rmsemle,3)`|`r signif(e$maemle,3)`|
+| 5x5         |             `r signif(e$hits55,3)`% | `r signif(e$rmse55,3)` |`r signif(e$mae55,3)`| 
+| 2x10 (9)    |              `r signif(e$hits9,3)`% | `r signif(e$rmse9,3)`  |`r signif(e$mae9,3)` |
+| 2x10 (6&9)  |             `r signif(e$hits69,3)`% | `r signif(e$rmse69,3)` |`r signif(e$mae69,3)`|
+| Rayleigh 20 |             `r signif(e$hits20,3)`% | `r signif(e$rmse20,3)` |`r signif(e$mae20,3)`|
+| MLE 20      |            `r signif(e$hitsmle,3)`% | `r signif(e$rmsemle,3)`|`r signif(e$maemle,3)`|
 
 ###Experiment 5: Actual Data
 
@@ -349,10 +349,10 @@ e <- experiment(main='Actual Experimental Data', ymax=0.08, simulate=F, legendpo
 
 | Estimator   | Hits within estimated R<sub>90</sub>| RMSE                   | MAE                 |
 |-------------|-------------------------------------|------------------------|---------------------|
-| 2x10 (9)    |                `r signif(e$hits9)`% | `r signif(e$rmse9,3)`  |`r signif(e$mae9,3)` |
-| 2x10 (6&9)  |               `r signif(e$hits69)`% | `r signif(e$rmse69,3)` |`r signif(e$mae69,3)`|
-| Rayleigh 20 |               `r signif(e$hits20)`% | `r signif(e$rmse20,3)` |`r signif(e$mae20,3)`|
-| MLE 20      |              `r signif(e$hitsmle)`% | `r signif(e$rmsemle,3)`|`r signif(e$maemle,3)`|
+| 2x10 (9)    |              `r signif(e$hits9,3)`% | `r signif(e$rmse9,3)`  |`r signif(e$mae9,3)` |
+| 2x10 (6&9)  |             `r signif(e$hits69,3)`% | `r signif(e$rmse69,3)` |`r signif(e$mae69,3)`|
+| Rayleigh 20 |             `r signif(e$hits20,3)`% | `r signif(e$rmse20,3)` |`r signif(e$mae20,3)`|
+| MLE 20      |            `r signif(e$hitsmle,3)`% | `r signif(e$rmsemle,3)`|`r signif(e$maemle,3)`|
 
 ###Appendix
 
@@ -453,7 +453,7 @@ $$k = \frac{R_{90}}{r} = \sqrt{\frac{4 ln(10)}{\pi}} \approx 1.71223316$$
 
 Rayleigh distribution is asymmetric so this is a lower bound on $k$.
 
-**MLE 20** factor for $N=20$ is 
+**MLE 20** factor 0.35 was determined approximately using Monte Carlo simulations, but we can similarly get lower bound in closed form, which for $N=20$ is 
 
 $$k=\frac{4^N N! (N-1)! \sqrt{N}}{(2N)!\sqrt{\pi}}\sqrt{2ln(10)}\sqrt{\frac{1}{2N}} \approx 0.3414341$$
 

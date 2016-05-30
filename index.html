@@ -80,14 +80,14 @@ img {
 <p><strong>2x10 (9)</strong>: Measure 9<sup>th</sup>-smallest miss radius R<sub>9:10</sub> in each of the two 10 shot groups, take the average, multiply by 1.15 to get estimate of R<sub>90</sub>.</p>
 <p><strong>2x10 (6&amp;9)</strong>: In a 10 shot group, add 6<sup>th</sup>-smallest miss radius R<sub>6:10</sub> and 9<sup>th</sup>-smallest miss radius R<sub>9:10</sub>. Do it again with the second group and take the average. Multiply by 0.69 to get estimate of R<sub>90</sub>.</p>
 <p><strong>Rayleigh 20</strong>: Take the average of 20 miss radiuses, multiply by 1.76 to get estimate of R<sub>90</sub>.</p>
-<p><strong>MLE 20</strong>: Take the sum of squares of 20 miss radiuses, multiply by factor shown in Appendix to get estimate of R<sub>90</sub>.</p>
+<p><strong>MLE 20</strong>: Take square root of the sum of squares of 20 miss radiuses, multiply by 0.35 to get estimate of R<sub>90</sub>.</p>
 </div>
 <div id="experiment-0-bivariate-normal-distribution" class="section level3">
 <h3>Experiment 0: Bivariate Normal Distribution</h3>
 <p>Start with establishing the baseline. Pull impact coordinates from standard bivariate normal distibution, estimate R<sub>90</sub>, pull another impact, see if it lands inside R<sub>90</sub>. Compare root mean square error (RMSE) and mean absolute error (MAE) of different estimators.</p>
 <p>Example groups:</p>
 <p><img src="index_files/figure-html/fig_00-1.png" title="" alt="" width="900" /></p>
-<p>Distribution of R<sub>90</sub> estimates based on <span class="math">\(10^{5}\)</span> simulations:</p>
+<p>Distribution of R<sub>90</sub> estimates based on <span class="math">\(10^{4}\)</span> simulations:</p>
 <p><img src="index_files/figure-html/fig_0-1.png" title="" alt="" width="900" /></p>
 <table>
 <thead>
@@ -101,33 +101,33 @@ img {
 <tbody>
 <tr class="odd">
 <td align="left">5x5</td>
-<td align="left">90.226%</td>
-<td align="left">0.274</td>
-<td align="left">0.466</td>
+<td align="left">90.4%</td>
+<td align="left">0.276</td>
+<td align="left">0.468</td>
 </tr>
 <tr class="even">
 <td align="left">2x10 (9)</td>
-<td align="left">90.067%</td>
-<td align="left">0.308</td>
-<td align="left">0.493</td>
+<td align="left">90.4%</td>
+<td align="left">0.31</td>
+<td align="left">0.494</td>
 </tr>
 <tr class="odd">
 <td align="left">2x10 (6&amp;9)</td>
-<td align="left">90.136%</td>
-<td align="left">0.277</td>
+<td align="left">90.4%</td>
+<td align="left">0.278</td>
 <td align="left">0.469</td>
 </tr>
 <tr class="even">
 <td align="left">Rayleigh 20</td>
-<td align="left">90.16%</td>
-<td align="left">0.264</td>
-<td align="left">0.458</td>
+<td align="left">90.6%</td>
+<td align="left">0.266</td>
+<td align="left">0.46</td>
 </tr>
 <tr class="odd">
 <td align="left">MLE 20</td>
-<td align="left">89.001%</td>
-<td align="left">0.241</td>
-<td align="left">0.438</td>
+<td align="left">90.6%</td>
+<td align="left">0.255</td>
+<td align="left">0.45</td>
 </tr>
 </tbody>
 </table>
@@ -151,33 +151,33 @@ img {
 <tbody>
 <tr class="odd">
 <td align="left">5x5</td>
-<td align="left">79.162%</td>
-<td align="left">0.475</td>
-<td align="left">0.643</td>
+<td align="left">79.1%</td>
+<td align="left">0.464</td>
+<td align="left">0.634</td>
 </tr>
 <tr class="even">
 <td align="left">2x10 (9)</td>
-<td align="left">90.473%</td>
-<td align="left">0.357</td>
-<td align="left">0.531</td>
+<td align="left">90.8%</td>
+<td align="left">0.363</td>
+<td align="left">0.535</td>
 </tr>
 <tr class="odd">
 <td align="left">2x10 (6&amp;9)</td>
-<td align="left">90.899%</td>
-<td align="left">0.334</td>
-<td align="left">0.515</td>
+<td align="left">91.1%</td>
+<td align="left">0.341</td>
+<td align="left">0.52</td>
 </tr>
 <tr class="even">
 <td align="left">Rayleigh 20</td>
-<td align="left">91.05%</td>
-<td align="left">0.33</td>
-<td align="left">0.512</td>
+<td align="left">91.2%</td>
+<td align="left">0.337</td>
+<td align="left">0.516</td>
 </tr>
 <tr class="odd">
 <td align="left">MLE 20</td>
-<td align="left">89.546%</td>
-<td align="left">0.28</td>
-<td align="left">0.472</td>
+<td align="left">90.9%</td>
+<td align="left">0.306</td>
+<td align="left">0.493</td>
 </tr>
 </tbody>
 </table>
@@ -206,33 +206,33 @@ img {
 <tbody>
 <tr class="odd">
 <td align="left">5x5</td>
-<td align="left">91.806%</td>
-<td align="left">1.03</td>
-<td align="left">0.86</td>
+<td align="left">91.7%</td>
+<td align="left">1.02</td>
+<td align="left">0.857</td>
 </tr>
 <tr class="even">
 <td align="left">2x10 (9)</td>
-<td align="left">89.218%</td>
-<td align="left">0.915</td>
-<td align="left">0.716</td>
+<td align="left">89%</td>
+<td align="left">0.906</td>
+<td align="left">0.713</td>
 </tr>
 <tr class="odd">
 <td align="left">2x10 (6&amp;9)</td>
-<td align="left">88.865%</td>
-<td align="left">0.605</td>
-<td align="left">0.618</td>
+<td align="left">89.1%</td>
+<td align="left">0.601</td>
+<td align="left">0.616</td>
 </tr>
 <tr class="even">
 <td align="left">Rayleigh 20</td>
-<td align="left">90.466%</td>
-<td align="left">0.633</td>
-<td align="left">0.679</td>
+<td align="left">90.6%</td>
+<td align="left">0.631</td>
+<td align="left">0.677</td>
 </tr>
 <tr class="odd">
 <td align="left">MLE 20</td>
-<td align="left">90.927%</td>
-<td align="left">1.25</td>
-<td align="left">0.924</td>
+<td align="left">91.7%</td>
+<td align="left">1.31</td>
+<td align="left">0.941</td>
 </tr>
 </tbody>
 </table>
@@ -255,33 +255,33 @@ img {
 <tbody>
 <tr class="odd">
 <td align="left">5x5</td>
-<td align="left">89.835%</td>
-<td align="left">0.404</td>
-<td align="left">0.565</td>
+<td align="left">89.6%</td>
+<td align="left">0.399</td>
+<td align="left">0.563</td>
 </tr>
 <tr class="even">
 <td align="left">2x10 (9)</td>
-<td align="left">89.008%</td>
+<td align="left">88.6%</td>
 <td align="left">0.437</td>
-<td align="left">0.588</td>
+<td align="left">0.589</td>
 </tr>
 <tr class="odd">
 <td align="left">2x10 (6&amp;9)</td>
-<td align="left">87.947%</td>
-<td align="left">0.375</td>
-<td align="left">0.549</td>
+<td align="left">87.6%</td>
+<td align="left">0.384</td>
+<td align="left">0.556</td>
 </tr>
 <tr class="even">
 <td align="left">Rayleigh 20</td>
-<td align="left">87.55%</td>
-<td align="left">0.347</td>
-<td align="left">0.529</td>
+<td align="left">87.3%</td>
+<td align="left">0.359</td>
+<td align="left">0.538</td>
 </tr>
 <tr class="odd">
 <td align="left">MLE 20</td>
-<td align="left">87.559%</td>
-<td align="left">0.348</td>
-<td align="left">0.529</td>
+<td align="left">88.3%</td>
+<td align="left">0.353</td>
+<td align="left">0.531</td>
 </tr>
 </tbody>
 </table>
@@ -302,33 +302,33 @@ img {
 <tbody>
 <tr class="odd">
 <td align="left">5x5</td>
-<td align="left">88.684%</td>
-<td align="left">1.12</td>
-<td align="left">0.9</td>
+<td align="left">88.9%</td>
+<td align="left">1.11</td>
+<td align="left">0.899</td>
 </tr>
 <tr class="even">
 <td align="left">2x10 (9)</td>
-<td align="left">89.333%</td>
-<td align="left">0.996</td>
-<td align="left">0.765</td>
+<td align="left">89.3%</td>
+<td align="left">1</td>
+<td align="left">0.769</td>
 </tr>
 <tr class="odd">
 <td align="left">2x10 (6&amp;9)</td>
-<td align="left">89.546%</td>
-<td align="left">0.677</td>
-<td align="left">0.661</td>
+<td align="left">89.5%</td>
+<td align="left">0.678</td>
+<td align="left">0.663</td>
 </tr>
 <tr class="even">
 <td align="left">Rayleigh 20</td>
-<td align="left">91.307%</td>
-<td align="left">0.779</td>
-<td align="left">0.749</td>
+<td align="left">91.5%</td>
+<td align="left">0.792</td>
+<td align="left">0.756</td>
 </tr>
 <tr class="odd">
 <td align="left">MLE 20</td>
-<td align="left">91.192%</td>
-<td align="left">1.43</td>
-<td align="left">0.965</td>
+<td align="left">91.9%</td>
+<td align="left">1.53</td>
+<td align="left">0.998</td>
 </tr>
 </tbody>
 </table>
@@ -349,27 +349,27 @@ img {
 <tbody>
 <tr class="odd">
 <td align="left">2x10 (9)</td>
-<td align="left">89.401%</td>
-<td align="left">10.2</td>
-<td align="left">2.61</td>
+<td align="left">89%</td>
+<td align="left">10.3</td>
+<td align="left">2.62</td>
 </tr>
 <tr class="even">
 <td align="left">2x10 (6&amp;9)</td>
-<td align="left">88.215%</td>
-<td align="left">7.87</td>
+<td align="left">87.8%</td>
+<td align="left">7.91</td>
 <td align="left">2.41</td>
 </tr>
 <tr class="odd">
 <td align="left">Rayleigh 20</td>
-<td align="left">88.141%</td>
-<td align="left">8.23</td>
+<td align="left">87.8%</td>
+<td align="left">8.24</td>
 <td align="left">2.49</td>
 </tr>
 <tr class="even">
 <td align="left">MLE 20</td>
-<td align="left">88.914%</td>
-<td align="left">14</td>
-<td align="left">2.99</td>
+<td align="left">89.5%</td>
+<td align="left">14.8</td>
+<td align="left">3.06</td>
 </tr>
 </tbody>
 </table>
@@ -426,7 +426,7 @@ find_root(cdf(k)=0.1,k,0.6,0.8);</code></pre>
 <p>therefore the factor is</p>
 <p><span class="math">\[k = \frac{R_{90}}{r} = \sqrt{\frac{4 ln(10)}{\pi}} \approx 1.71223316\]</span></p>
 <p>Rayleigh distribution is asymmetric so this is a lower bound on <span class="math">\(k\)</span>.</p>
-<p><strong>MLE 20</strong> factor for <span class="math">\(N=20\)</span> is</p>
+<p><strong>MLE 20</strong> factor 0.35 was determined approximately using Monte Carlo simulations, but we can similarly get lower bound in closed form, which for <span class="math">\(N=20\)</span> is</p>
 <p><span class="math">\[k=\frac{4^N N! (N-1)! \sqrt{N}}{(2N)!\sqrt{\pi}}\sqrt{2ln(10)}\sqrt{\frac{1}{2N}} \approx 0.3414341\]</span></p>
 <p><a href="http://maxima.sourceforge.net">Maxima</a> expression:</p>
 <pre class="maxima"><code>float(4^20*20!*(20-1)!*sqrt(20)*sqrt(2*log(10))/((2*20)!*sqrt(%pi)*sqrt(2*20)));</code></pre>

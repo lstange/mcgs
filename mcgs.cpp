@@ -310,19 +310,20 @@ int main(int argc, char* argv[])
   }
   const double rayleigh_cep_factor = sqrt(4 * log(2) / M_PI) / shots_in_group; // 0.9394/shots
   
-  double rayleigh_mle_factor = sqrt(log(2) / M_PI);
+  double mle_factor = sqrt(log(2) / M_PI);
   for (int i = 0; i < shots_in_group; i++) {
-    rayleigh_mle_factor *= 4;
+    mle_factor *= 4;
     if (i != shots_in_group - 1) {
-      rayleigh_mle_factor *= i + 1;
+      mle_factor *= i + 1;
     }
-    rayleigh_mle_factor /= i + 1 + shots_in_group;
+    mle_factor /= i + 1 + shots_in_group;
   }
   double miss_radius_to_r90hat_factor  = 0;
   double miss_radius_to_r90hat_factor_rounded = 0;
   double group_size_to_r90hat_factor = 0;
   double sixtynine_to_r90hat_factor = 0;
   double rayleigh_to_r90hat_factor = 0;
+  double mle_to_r90hat_factor = 0;
   std::pair<int, int> sixtynine_rank( (shots_in_group * 6 - 5) / 10 // 60th percentile
                                     , (shots_in_group * 9 - 5) / 10 // 90th percentile
                                     );
@@ -350,6 +351,7 @@ int main(int argc, char* argv[])
         break;
       case 20: 
         rayleigh_to_r90hat_factor = 1.76;
+        mle_to_r90hat_factor = 0.35;
         break;
     }
   } else if (groups_in_experiment == 2) {
@@ -435,6 +437,9 @@ int main(int argc, char* argv[])
         miss_radius_to_r90hat_factor_rounded = 1.1;
         group_size_to_r90hat_factor = 0.7;
         break;
+      case 20:
+        mle_to_r90hat_factor = 0.3414341089001782;
+        break;
     }
   }
   if (shots_in_group == 10) {
@@ -468,8 +473,8 @@ int main(int argc, char* argv[])
   } else if (shots_in_group > 7) {
     sixtynine_to_r90hat_factor = 0.69;
   }
-  DescriptiveStat gs_s, gs_s2, bgs_s, ags_s, ags_s2, mgs_s, amr_s, aamr_s, rayleigh_s, median_r_s;
-  DescriptiveStat rayleigh_mle, worst_r_s, second_worst_r_s;
+  DescriptiveStat gs_s, gs_s2, bgs_s, ags_s, ags_s2, mgs_s, amr_s, aamr_s, rayleigh_s, mle_s, median_r_s;
+  DescriptiveStat worst_r_s, second_worst_r_s;
   std::map< std::pair<int, int>, DescriptiveStat> sixtynine_r_s;
   DescriptiveStat nsd_s, wr_s, swr_s, sixtynine_s;
   int hits_within_r50hat = 0;
@@ -478,15 +483,17 @@ int main(int argc, char* argv[])
   int hits_within_r90hat3 = 0;
   int hits_within_r90hat4 = 0;
   int hits_within_r90hat5 = 0;
+  int hits_within_r90hat6 = 0;
   double r50hat = 0;
   double r90hat = 0;
   double r90hat2 = 0;
   double r90hat3 = 0;
   double r90hat4 = 0;
   double r90hat5 = 0;
+  double r90hat6 = 0;
   for (int experiment = 0; experiment < experiments; experiment++) {
     double best_gs = 0;
-    DescriptiveStat gs, gs2, amr, wr, swr, sixtynine, rayleigh;
+    DescriptiveStat gs, gs2, amr, wr, swr, sixtynine, rayleigh, mle;
     std::vector<double> gsg_v;
     for (int j = 0; j < groups_in_experiment; j++) { 
       ShotGroup g; 
@@ -514,6 +521,7 @@ int main(int argc, char* argv[])
           if (ri < r90hat3) hits_within_r90hat3++;
           if (ri < r90hat4) hits_within_r90hat4++;
           if (ri < r90hat5) hits_within_r90hat5++;
+          if (ri < r90hat6) hits_within_r90hat6++;
         }
       } // Next shot
 
@@ -542,7 +550,10 @@ int main(int argc, char* argv[])
       double this_rayleigh = rayleigh_cep_factor * accumulate(r.begin(), r.end(), 0.);
       rayleigh.push(this_rayleigh);
       rayleigh_s.push(this_rayleigh);
-      rayleigh_mle.push(rayleigh_mle_factor * sqrt(accumulate(r2.begin(), r2.end(), 0.)));
+      
+      double this_mle = sqrt(accumulate(r2.begin(), r2.end(), 0.));
+      mle.push(this_mle);
+      mle_s.push(mle_factor * this_mle);
       
       double this_wr = kth_miss_radius(r, shots_in_group - 1);
       wr.push(this_wr);
@@ -590,6 +601,9 @@ int main(int argc, char* argv[])
     }
     r90hat4 = sixtynine.mean() * sixtynine_to_r90hat_factor;
     r90hat5 = rayleigh.mean() * rayleigh_to_r90hat_factor / sqrt(4 * log(2) / M_PI);
+    if (shots_in_group == 20) {
+      r90hat6 = mle.mean() * mle_to_r90hat_factor;
+    }
   } // Next experiment
   if (groups_in_experiment == 1) {
     gs_s.show("Group size:");
@@ -603,7 +617,7 @@ int main(int argc, char* argv[])
       theoretical_cep =  sqrt(-2*log(0.5));
     }
     rayleigh_s.show("Rayleigh CEP estimator:", theoretical_cep);
-    rayleigh_mle.show("Maximum likelihood CEP estimator:", theoretical_cep);
+    mle_s.show("Maximum likelihood CEP estimator:", theoretical_cep);
     median_r_s.show("Median CEP estimator:"); // Not showing theoretical_cep because median has known bias
     double theoretical_worst = 0;
     if (proportion_of_outliers == 0) {
@@ -702,6 +716,11 @@ int main(int argc, char* argv[])
     std::cout << "Percent of hits within " << rayleigh_to_r90hat_factor 
               << " * average miss radius: " 
               << 100. * hits_within_r90hat5 / denominator << "%\n";
+  }
+  if (mle_to_r90hat_factor > 0) {
+    std::cout << "Percent of hits within " << mle_to_r90hat_factor 
+              << " * square root of sum of squares: " 
+              << 100. * hits_within_r90hat6 / denominator << "%\n";
   }
   return 0;
 }
