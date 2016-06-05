@@ -1,0 +1,267 @@
+---
+title: "Order Statistics"
+output: 
+  html_document: 
+    self_contained: no
+---
+
+```{r functions,  echo=FALSE, message=FALSE, warning=FALSE}
+library("plotrix")
+
+bivariate_normal <- function(n)
+{
+  d <- data.frame(u=runif(n), v=runif(n))
+  
+  # Box-Muller transform
+  d$r = sqrt(-2 * log(d$u))
+  d$x = d$r * cos(2 * pi * d$v)
+  d$y = d$r * sin(2 * pi * d$v)
+
+  # Order by miss radius
+  return (d[order(d$r),])
+}
+```
+
+###tl;dr
+
+Use second worst miss radius measured from the target center.
+
+###Motivational Example
+
+You borrow a rifle for the hunt. The owner says it is zeroed and you trust him. But you don't know how well you can shoot this rifle, or how your ammo performs in it. You want to determine how big a target you can hit, or equivalently how far you can hit a target of a given size. For simplicity assume ~~spherical horse in vacuum~~ that the target is round and the distance is small enough that you don't have to worry about holdovers and can ignore wind.
+
+By the way, this is what professional hunters do when they bring their client to the range the day before the hunt to "zero the rifle". They know the rifle is zeroed. They want to know how close they need to get this particular client to the game animal for the hunt to be successful.
+
+###Metric Choice
+
+One metric particularly useful in practice is $R_{90}$: the radius of a circle that is expected to contain 90% of all impacts. 
+
+This choice is a compromise. $R_{100}$ is much easier to estimate, but knowing the trivial fact that $R_{100}=\infty$ does not help much. Given available number of shots, there would not be enough tail events to determine $R_{99}$ or even $R_{95}$ with sufficient accuracy. From the other side, $R_{50}$ aka CEP might be reasonable for military applications, but is too low for civilian use.
+
+In theory it's easy to convert between different metrics, but in practice it's better to have a way to get the metric you want directly with the least amount of math to be done in the field.
+
+One nice side effect of choosing $R_{90}$ is that it allows to sidestep the tricky outlier/flier/defect question. We simply decide to not care about the few worst shots, regardless of the reason. And if fliers are more frequent, they probably aren't really fliers.
+
+So you go to the range, set up some paper targets at typical engagement range, shoot at them, and look at the results.
+
+###One Shot - Summary
+
+Even one shot is better than nothing. If miss radius (the distance between target center and impact) is $R_{1:1}$, then estimated $R_{90}$ is
+
+$$\hat{R_{90}} = 3 R_{1:1}$$
+
+In examples below red circle has radius $R_{1:1}$ and blue circle has radius $\hat{R_{90}}$.
+
+```{r fig_1, echo=FALSE, message=FALSE, warning=FALSE, fig.width=6, fig.height=1.5, dpi=150}
+  set.seed(0)
+  old.par <- par(mfrow=c(1,4))
+  par(mar=c(0,0,0,0))
+  for (i in 1:4) {
+    a <- bivariate_normal(1)
+    plot(a$x, a$y, type='p', xlim=c(-4,4), ylim=c(-4,4), axes=F, pch=19)
+    axis(1, pos=0, labels=NA, col='gray')
+    axis(2, pos=0, labels=NA, col='gray') 
+    draw.circle(0, 0, a$r[1], nv=1000, border='red', lty=1)
+    draw.circle(0, 0, 3*a$r[1], nv=1000, border='blue', lty=2)
+  }
+  par(old.par)
+```
+
+All impact coordinates were pulled from the same standard bivariate normal distribution, but the circles look very different in size, which means that the variance of the estimate is quite high.
+
+###One Shot - Rationale
+
+Here's the math behind the magic number 3. Assume miss radiuses of individual shots follow Rayleigh distribution with $\sigma = 1$. Its probability density function is
+
+$$f(x)=x e^{-\frac{x^2}{2}}$$
+
+and cumulative distribution function is
+
+$$F(x)=1-e^{-\frac{x^2}{2}}$$
+
+$x$ here is miss radius rather than horizontal coordinate. $R_{90}$ and $x$ are measured in the same units and there are no other factors involved, so $R_{90}$ should be proportional to $x$ with some yet unknown dimensionless coefficient $k$. Probability that miss radius of the next shot is greater than $kx$ (complementary cumulative distribution function) is 
+
+$$1-F(kx) = e^{-\frac{k^2 x^2}{2}}$$
+
+Integrating over all values of $x$ gives total probability of the next miss radius exceeding $R_{90}$, which should be equal to 0.1:
+
+$$\int_{0}^{\infty}f(x)\left(1-F(kx)\right) dx = \int_{0}^{\infty}x e^{-\frac{x^2}{2}} e^{-\frac{k^2 x^2}{2}} dx = 0.1$$
+
+This equation is easy to solve on paper, but it will soon get more interesitng so why not warm [Maxima](http://maxima.sourceforge.net) up now to find $k$.
+
+```maxima
+find_root(integrate(x*exp(-x^2/2)*exp(-k^2*x^2/2), x, 0, inf)=0.1, k, 1, 10);
+3.0
+```
+
+###Three Shots - Summary
+
+If worst miss radius in the three-shot group is $R_{3:3}$, then
+
+$$\hat{R_{90}} = \sqrt{2} R_{3:3} \approx 1.4 R_{3:3}$$
+
+In examples below red circle has radius $R_{3:3}$ and blue circle has radius $\hat{R_{90}}$.
+
+```{r fig_3, echo=FALSE, message=FALSE, warning=FALSE, fig.width=6, fig.height=1.5, dpi=150}
+  set.seed(0)
+  old.par <- par(mfrow=c(1,4))
+  par(mar=c(0,0,0,0))
+  for (i in 1:4) {
+    a <- bivariate_normal(3)
+    plot(a$x, a$y, type='p', xlim=c(-4,4), ylim=c(-4,4), axes=F, pch=19)
+    axis(1, pos=0, labels=NA, col='gray')
+    axis(2, pos=0, labels=NA, col='gray') 
+    draw.circle(0, 0, a$r[3], nv=1000, border='red', lty=1)
+    draw.circle(0, 0, 1.4*a$r[3], nv=1000, border='blue', lty=2)
+  }
+  par(old.par)
+```
+
+###Three Shots - Rationale
+
+Here's where $\sqrt{2}$ comes from. Probability density of $m$th miss radius in a group of $n$ shots is
+
+$$f_{m:n}(x)=\frac{n!}{(m-1)!(n-m)!}\left(F(x)\right)^{m-1}\left(1-F(x)\right)^{n-m}f(x)$$
+
+For $m=3$ and $n=3$
+
+$$f_{3:3}(x)=\frac{3!}{(3-1)!(3-3)!}\left(F(x)\right)^{3-1}\left(1-F(x)\right)^{3-3}f(x)=3\left(F(x)\right)^{2}f(x)=3\left(1-e^{-\frac{x^2}{2}}\right)^{2} x e^{-\frac{x^2}{2}}$$
+
+Integrating over all values of $x$
+
+$$\int_{0}^{\infty}f_{3:3}(x) (1-F(kx)) dx = \int_{0}^{\infty}3\left(1-e^{-\frac{x^2}{2}}\right)^{2} x e^{-\frac{x^2}{2}} e^{-\frac{k^2 x^2}{2}} dx = 0.1$$
+
+Solving for $k$, we get
+
+```maxima
+find_root(integrate(3*(1-exp(-x^2/2))^2*x*exp(-x^2/2)*exp(-k^2*x^2/2), x, 0, inf)=0.1, k, 1, 10);
+1.414213562373095
+```
+
+###Five Shots - Summary
+
+So far we have ignored the issue of outliers (fliers), but with five or more shots we can finally do something about them: look at the *second worst*  miss radius instead of the worst miss radius.
+
+$$\hat{R_{90}} \approx 1.6 R_{4:5}$$
+
+In examples below red circle has radius $R_{4:5}$ (4<sup>th</sup>-smallest miss radius in a 5-shot group), and blue circle has radius $\hat{R_{90}}$.
+
+```{r fig_5, echo=FALSE, message=FALSE, warning=FALSE, fig.width=6, fig.height=1.5, dpi=150}
+  set.seed(0)
+  old.par <- par(mfrow=c(1,4))
+  par(mar=c(0,0,0,0))
+  for (i in 1:4) {
+    a <- bivariate_normal(5)
+    plot(a$x, a$y, type='p', xlim=c(-4,4), ylim=c(-4,4), axes=F, pch=19)
+    axis(1, pos=0, labels=NA, col='gray')
+    axis(2, pos=0, labels=NA, col='gray') 
+    draw.circle(0, 0, a$r[4], nv=1000, border='red', lty=1)
+    draw.circle(0, 0, 1.6*a$r[4], nv=1000, border='blue', lty=2)
+  }
+  par(old.par)
+```
+
+###Five Shots - Rationale
+
+According to formula 3.13 in M. M. Siddiqui 1964 paper referenced in Prior Art, optimum unbiased estimator from single order statistic $R_{m:n}$ is 
+
+$$m \approx 0.79681(n+1)-0.39841+\frac{1.16312}{n+1}$$
+
+For $n=5$ optimum estimator is $m=5$, but $m=4$ is not far behind and is less sensitive to outliers.
+
+Probability density of $m$th miss radius in a group of $n$ shots is
+
+$$f_{m:n}(x)=\frac{n!}{(m-1)!(n-m)!}\left(F(x)\right)^{m-1}\left(1-F(x)\right)^{n-m}f(x)$$
+
+For $m=4$ and $n=5$
+
+$$f_{4:5}(x)=\frac{5!}{(4-1)!(5-4)!}\left(F(x)\right)^{4-1}\left(1-F(x)\right)^{5-4}f(x)=20\left(F(x)\right)^{3}\left(1-F(x)\right)f(x)$$
+$$=20\left(1-e^{-\frac{x^2}{2}}\right)^{3} e^{-\frac{x^2}{2}} x e^{-\frac{x^2}{2}}$$
+
+Integrating over all values of $x$
+
+$$\int_{0}^{\infty}f_{4:5}(x) (1-F(kx)) dx = \int_{0}^{\infty} 20\left(1-e^{-\frac{x^2}{2}}\right)^{3} e^{-\frac{x^2}{2}} x e^{-\frac{x^2}{2}} x e^{-\frac{k^2 x^2}{2}} dx = 0.1$$
+
+Solving for $k$
+
+```maxima
+f45(x):=20*(1-exp(-x^2/2))^3*x*exp(-x^2);
+find_root(integrate(f45(u)*exp(-k^2*u^2/2),u,0,inf)=0.1, k, 1, 2);
+1.578643529936508
+```
+
+###Ten Shots - Summary
+
+We can simply split ten shots into two five-shot groups and take the average, but adding 6th and 9th miss radiuses works even better:
+
+$$\hat{R_{90}} \approx 0.7 (R_{6:10} + R_{9:10})$$
+
+In examples below the two red circles have radiuses $R_{6:10}$ and $R_{9:10}$, and blue circle has radius $\hat{R_{90}}$.
+
+```{r fig_10, echo=FALSE, message=FALSE, warning=FALSE, fig.width=6, fig.height=1.5, dpi=150}
+  set.seed(0)
+  old.par <- par(mfrow=c(1,4))
+  par(mar=c(0,0,0,0))
+  for (i in 1:4) {
+    a <- bivariate_normal(10)
+    plot(a$x, a$y, type='p', xlim=c(-4,4), ylim=c(-4,4), axes=F, pch=19)
+    axis(1, pos=0, labels=NA, col='gray')
+    axis(2, pos=0, labels=NA, col='gray') 
+    draw.circle(0, 0, a$r[6], nv=1000, border='red', lty=1)
+    draw.circle(0, 0, a$r[9], nv=1000, border='red', lty=1)
+    draw.circle(0, 0, 0.7*(a$r[6]+a$r[9]), nv=1000, border='blue', lty=2)
+  }
+  par(old.par)
+```
+
+###Ten Shots - Rationale
+
+According to M. M. Siddiqui 1964 paper referenced in Prior Art, the two optimal order statistics are $0.639(n+1)$ and $0.927(n+1)$. For $n=10$ it's 7 and 10, but 6 and 9 work nearly as well. Not using the worst miss radius means that R<sub>6:10</sub> + R<sub>9:10</sub> is a more robust estimator.
+
+Joint probability distribution of 6<sup>th</sup> miss radius $x=R_{6:10}$ and 9<sup>th</sup> miss radius $y=R_{9:10}$ is
+
+$$f(x,y)=\frac{n!}{(j-1)!(k-j-1)!(n-k)!}\left[F(x)\right]^{j-1}\left(F(y)-F(x)\right)^{k-j-1}\left(1-F(y)\right)^{n-k}f(x)f(y)$$
+$$=15120 \left[1-e^{-\frac{x^2}{2}}\right]^5 \left(e^{-\frac{x^2}{2}}-e^{-\frac{y^2}{2}}\right)^2 e^{-\frac{y^2}{2}} x e^{-\frac{x^2}{2}} y e^{-\frac{y^2}{2}}, x \le y$$
+
+Since we only care about $x+y$, we can rotate axes by 45&deg; and integrate over $x-y$:
+
+$$p(u)=\frac{1}{2}\int_{0}^{u}f\left(\frac{u-v}{2},\frac{u+v}{2}\right)dv$$
+
+Integrating over all values of $u$
+
+$$\int_{0}^{\infty}p(u)e^{-\frac{k^2 u^2}{2}}du = 0.1$$
+
+This seems to be too hard even for Maxima to solve analytically, so we'll have to resort to numeric integration using [Romberg's method](https://en.wikipedia.org/wiki/Romberg%27s_method). Upper limit of 10 instead of $\infty$ in second integration prevents underflow in the tail.
+
+```maxima
+f(x,y):=15120*(1-exp(-x^2/2))^5*(exp(-x^2/2)-exp(-y^2/2))^2*exp(-y^2/2)*x*exp(-x^2/2)*y*exp(-y^2/2);
+p(u):=romberg(f((u-v)/2,(u+v)/2)/2,v,0,u);
+find_root(romberg(p(u)*exp(-k^2*u^2/2),u,0,10)=0.1,k,0.6,0.8);
+0.70766872521906
+```
+
+###Multiple Groups - Summary
+
+With more than ten shots, it's easier to split them into five- or ten-shot groups and take the average. The factors will be somewhat smaller:
+
+$$\hat{R_{90}} \approx 1.4 R_{4:5} \approx 0.67 (R_{6:10} + R_{9:10})$$
+
+###Multiple Groups - Rationale
+
+With very large number of groups, the factors are just ratios of expected values:
+
+$$\frac{E(R_{90})}{E(R_{4:5})}$$
+
+```maxima
+f45(x):=20*(1-exp(-x^2/2))^3*x*exp(-x^2);
+float(sqrt(2*log(10))/integrate(x*f45(x), x, 0, inf))
+1.38619009633813
+```
+$$\frac{E(R_{90})}{E(R_{6:10})+E(R_{9:10})}$$
+ 
+```maxima
+f610(x):=1260*(1-exp(-x^2/2))^5*exp(-2*x^2)*x*exp(-x^2/2);
+f910(x):=90*(1-exp(-x^2/2))^8*x*exp(-x^2);
+float(sqrt(2*log(10))/(integrate(x*f610(x),x,0,inf)+integrate(x*f910(x),x,0,inf)));
+0.6702446399176036
+```

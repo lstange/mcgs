@@ -6,7 +6,7 @@ output:
 ---
 
 ```{r functions,  echo=FALSE, message=FALSE, warning=FALSE}
-n <- 100000
+n <- 10000
 
 bivariate_normal <- function(n, yoffset=0, eccentricity=0, flier_rate=0, flier_severity=3)
 {
@@ -67,27 +67,40 @@ experimental_data <- c(17,25,41,65,150,11,16,16,21,26,42,10,22,24,45,49,12,25,30
 experiment <- function(main=NA, ymax=3, yoffset=0, eccentricity=0, flier_rate=0, flier_severity=3, legendpos='topright', simulated=T)
 {
   gs55 <- numeric(n)
+  kr4 <- numeric(n)
+  kr44 <- numeric(n)
   kr9 <- numeric(n)
   kr69 <- numeric(n)
   rr20 <- numeric(n)
   mle20 <- numeric(n)
   o <- numeric(n)
   hits55 <- 0
+  hits4 <- 0
+  hits44 <- 0
   hits9 <- 0
   hits69 <- 0
   hits20 <- 0
   hitsmle <- 0
-  rr20_factor <- 1.76
-  mle20_factor <- 0.35
   for (i in 1:n) {
+    h <- numeric(5);
     if (simulated) {
       e <- numeric(5);
       for (j in 1:5) {
         g <- bivariate_normal(5, yoffset, eccentricity, flier_rate, flier_severity);
         e[j] <- group_size(g);
+        g <- g[order(g$r),];
+        h[j] <- g$r[4];
       }
       gs55[i] <- 0.72 * mean(e); 
+    } else {
+      for (j in 1:5) {
+        g <- sample(experimental_data, 5, replace=T);
+        g <- g[order(g)];
+        h[j] <- g[4];
+      }
     }
+    kr4[i] <- 1.42 * mean(h);
+    kr44[i] <- 1.43 * mean(h[-1]);
     e <- numeric(2);
     f <- numeric(2);
     r <- numeric(2);
@@ -106,8 +119,8 @@ experiment <- function(main=NA, ymax=3, yoffset=0, eccentricity=0, flier_rate=0,
     }
     kr9[i] <- 1.15 * mean(f);
     kr69[i] <- 0.69 * mean(e);
-    rr20[i] <- rr20_factor * mean(r);
-    mle20[i] <- mle20_factor * sqrt(sum(r2));
+    rr20[i] <- 1.76 * mean(r);
+    mle20[i] <- 0.35 * sqrt(sum(r2));
     if (simulated) { 
       r <- bivariate_normal(1, yoffset, eccentricity, flier_rate, flier_severity)$r 
     } else {
@@ -115,6 +128,12 @@ experiment <- function(main=NA, ymax=3, yoffset=0, eccentricity=0, flier_rate=0,
     }
     if (r < gs55[i]) {
       hits55 <- hits55 + 1;
+    }
+    if (r < kr4[i]) {
+      hits4 <- hits4 + 1;
+    }
+    if (r < kr44[i]) {
+      hits44 <- hits44 + 1;
     }
     if (r < kr9[i]) {
       hits9 <- hits9 + 1;
@@ -133,47 +152,57 @@ experiment <- function(main=NA, ymax=3, yoffset=0, eccentricity=0, flier_rate=0,
   if (simulated) {
     hist55 <- hist(gs55, plot=F, breaks=50);
     plot(main=main, smooth.spline(hist55$mids, hist55$density), col='red', type='l', xlab='Estimated R90', ylab='PDF', xlim=c(0,5), ylim=c(0,ymax));
-    hist9 <- hist(kr9, plot=F, breaks=50);
-    lines(smooth.spline(hist9$mids, hist9$density), col='green', lty=2);
+    hist4 <- hist(kr4, plot=F, breaks=50);
+    lines(smooth.spline(hist4$mids, hist4$density), col='green', lty=2);
   } else {
-    hist9 <- hist(kr9, plot=F, breaks=50);
-    plot(main=main, smooth.spline(hist9$mids, hist9$density), col='green', type='l', lty=2, xlab='Estimated R90, mm', ylab='PDF', xlim=c(0,100), ylim=c(0,ymax));
+    hist4 <- hist(kr4, plot=F, breaks=50);
+    plot(main=main, smooth.spline(hist4$mids, hist4$density), col='green', type='l', lty=2, xlab='Estimated R90', ylab='PDF', xlim=c(0,100), ylim=c(0,ymax));
   }
+  hist44 <- hist(kr44, plot=F, breaks=50);
+  lines(smooth.spline(hist44$mids, hist44$density), col='blue', lty=3);
+  hist9 <- hist(kr9, plot=F, breaks=50);
+  lines(smooth.spline(hist9$mids, hist9$density), col='cyan', lty=4);
   hist69 <- hist(kr69, plot=F, breaks=50);
-  lines(smooth.spline(hist69$mids, hist69$density), col='blue', lty=3);
+  lines(smooth.spline(hist69$mids, hist69$density), col='orange', lty=5);
   hist20 <- hist(rr20, plot=F, breaks=50);
-  lines(smooth.spline(hist20$mids, hist20$density), col='cyan', lty=4);
+  lines(smooth.spline(hist20$mids, hist20$density), col='brown', lty=6);
   histmle <- hist(mle20, plot=F, breaks=50);
-  lines(smooth.spline(histmle$mids, histmle$density), col='orange', lty=5);
+  lines(smooth.spline(histmle$mids, histmle$density), col='navy', lty=7);
   if (simulated) {
     actual_r90 <- quantile(o, probs=c(0.9));
   } else {
     actual_r90 <- quantile(experimental_data, probs=c(0.9));
   }
-  abline(v=actual_r90, lty=5, col='grey')
+  abline(v=actual_r90, lty=8, col='grey')
   if (simulated) {
-    legend(legendpos, inset=.05, c('5x5','2x10 (9)','2x10 (6&9)','Rayleigh 20','MLE 20','Actual'), lwd=2, lty=c(1,2,3,4,5,6), col=c('red','green','blue','cyan','orange','grey'), bty='n');
+    legend(legendpos, inset=.05, c('5x5 (NRA)','5x5 (4th)','4x5 (4th)','2x10 (9th)','2x10 (6&9th)','Rayleigh 20','MLE 20','Actual'), lwd=2, lty=c(1,2,3,4,5,6,7,8), col=c('red','green','blue','cyan','orange','brown','navy','grey'), bty='n');
   } else {
-    legend(legendpos, inset=.05, c('2x10 (9)','2x10 (6&9)','Rayleigh 20','MLE 20','Actual'), lwd=2, lty=c(2,3,4,5,6), col=c('green','blue','cyan','orange','grey'), bty='n');
+    legend(legendpos, inset=.05, c('5x5 (4th)','4x5 (4th)','2x10 (9th)','2x10 (6&9th)','Rayleigh 20','MLE 20','Actual'), lwd=2, lty=c(2,3,4,5,6,7,8), col=c('green','blue','cyan','orange','brown','navy','grey'), bty='n');
   }
   hits55  <- 100*hits55/n;
+  hits4   <- 100*hits4/n;
+  hits44  <- 100*hits44/n;
   hits9   <- 100*hits9/n;
   hits69  <- 100*hits69/n;
   hits20  <- 100*hits20/n;
   hitsmle <- 100*hitsmle/n;
   rmse55 <- sqrt(sum((gs55 - actual_r90)^2)/n);
+  rmse4  <- sqrt(sum((kr4  - actual_r90)^2)/n);
+  rmse44 <- sqrt(sum((kr44 - actual_r90)^2)/n);
   rmse9  <- sqrt(sum((kr9  - actual_r90)^2)/n);
   rmse69 <- sqrt(sum((kr69 - actual_r90)^2)/n);
   rmse20 <- sqrt(sum((rr20 - actual_r90)^2)/n);
   rmsemle <- sqrt(sum((mle20 - actual_r90)^2)/n);
   mae55 <- sqrt(mean(abs(gs55 - actual_r90)));
+  mae4  <- sqrt(mean(abs(kr4  - actual_r90)));
+  mae44 <- sqrt(mean(abs(kr44 - actual_r90)));
   mae9  <- sqrt(mean(abs(kr9  - actual_r90)));
   mae69 <- sqrt(mean(abs(kr69 - actual_r90)));
   mae20 <- sqrt(mean(abs(rr20 - actual_r90)));
   maemle <- sqrt(mean(abs(mle20 - actual_r90)));
-  data.frame( hits55, hits9, hits69, hits20, hitsmle
-            , rmse55, rmse9, rmse69, rmse20, rmsemle
-            , mae55,  mae9,  mae69,  mae20, maemle
+  data.frame( hits55, hits4, hits44, hits9, hits69, hits20, hitsmle
+            , rmse55, rmse4, rmse44, rmse9, rmse69, rmse20, rmsemle
+            , mae55,  mae4,  mae44,  mae9,  mae69,  mae20,  maemle
             );
 }
 
@@ -193,7 +222,7 @@ group_examples <- function(yoffset=0, eccentricity=0, flier_rate=0, flier_severi
 
 ###Abstract
 
-Several R<sub>90</sub> estimators are compared using Monte Carlo simulations. Estimators based on R<sub>9:10</sub> (second worst miss radius in a 10-shot group) and R<sub>6:10</sub>+R<sub>9:10</sub> found to perform well on wide variety of input distributions.
+Several R<sub>90</sub> estimators are compared using Monte Carlo simulations. L-estimators based on second worst miss radius or R<sub>6:10</sub>+R<sub>9:10</sub> found to perform well on wide variety of input distributions.
 
 ###Objective
 
@@ -201,11 +230,15 @@ Based on observed shots, estimate R<sub>90</sub> (the radius of a circle that is
 
 ###Estimators
 
-**5x5**: Measure average extreme spread of five 5-shot groups. This common method is used by NRA magazine *American Rifleman* to report firearm accuracy. Multiply by 0.72 to get estimate of R<sub>90</sub>. This assumes perfect zero.
+**5x5 (NRA)**: Measure average extreme spread of five 5-shot groups. This common method is used by NRA magazine *American Rifleman* to report firearm accuracy. Multiply by 0.72 to get estimate of R<sub>90</sub>. This assumes perfect zero.
 
-**2x10 (9)**: Measure 9<sup>th</sup>-smallest miss radius R<sub>9:10</sub> in each of the two 10 shot groups, take the average, multiply by 1.15 to get estimate of R<sub>90</sub>.
+**5x5 (4th)**: Measure 4<sup>th</sup>-smallest miss radius R<sub>4:5</sub> in each of the five 5 shot groups, take the average, multiply by 1.42 to get estimate of R<sub>90</sub>.
 
-**2x10 (6&9)**: In a 10 shot group, add 6<sup>th</sup>-smallest miss radius R<sub>6:10</sub> and 9<sup>th</sup>-smallest miss radius R<sub>9:10</sub>. Do it again with the second group and take the average. Multiply by 0.69 to get estimate of R<sub>90</sub>.
+**4x5 (4th)**: Measure 4<sup>th</sup>-smallest miss radius R<sub>4:5</sub> in each of the four 5 shot groups, take the average, multiply by 1.43 to get estimate of R<sub>90</sub>.
+
+**2x10 (9th)**: Measure 9<sup>th</sup>-smallest miss radius R<sub>9:10</sub> in each of the two 10 shot groups, take the average, multiply by 1.15 to get estimate of R<sub>90</sub>.
+
+**2x10 (6&9th)**: In a 10 shot group, add 6<sup>th</sup>-smallest miss radius R<sub>6:10</sub> and 9<sup>th</sup>-smallest miss radius R<sub>9:10</sub>. Do it again with the second group and take the average. Multiply by 0.69 to get estimate of R<sub>90</sub>.
 
 **Rayleigh 20**: Take the average of 20 miss radiuses, multiply by 1.76 to get estimate of R<sub>90</sub>.
 
@@ -230,9 +263,11 @@ e <- experiment(main='Bivariate Normal Distribution', ymax=1.8);
 
 | Estimator   | Hits within estimated R<sub>90</sub>| RMSE                   | MAE                 |
 |-------------|-------------------------------------|------------------------|---------------------|
-| 5x5         |             `r signif(e$hits55,3)`% | `r signif(e$rmse55,3)` |`r signif(e$mae55,3)`| 
-| 2x10 (9)    |              `r signif(e$hits9,3)`% | `r signif(e$rmse9,3)`  |`r signif(e$mae9,3)` |
-| 2x10 (6&9)  |             `r signif(e$hits69,3)`% | `r signif(e$rmse69,3)` |`r signif(e$mae69,3)`|
+| 5x5 (NRA)   |             `r signif(e$hits55,3)`% | `r signif(e$rmse55,3)` |`r signif(e$mae55,3)`| 
+| 5x5 (4th)   |              `r signif(e$hits4,3)`% | `r signif(e$rmse4,3)`  |`r signif(e$mae4,3)` | 
+| 4x5 (4th)   |             `r signif(e$hits44,3)`% | `r signif(e$rmse44,3)` |`r signif(e$mae44,3)`| 
+| 2x10 (9th)  |              `r signif(e$hits9,3)`% | `r signif(e$rmse9,3)`  |`r signif(e$mae9,3)` |
+| 2x10 (6&9th)|             `r signif(e$hits69,3)`% | `r signif(e$rmse69,3)` |`r signif(e$mae69,3)`|
 | Rayleigh 20 |             `r signif(e$hits20,3)`% | `r signif(e$rmse20,3)` |`r signif(e$mae20,3)`|
 | MLE 20      |            `r signif(e$hitsmle,3)`% | `r signif(e$rmsemle,3)`|`r signif(e$maemle,3)`|
 
@@ -256,9 +291,11 @@ e <- experiment(main='Offset Zero', ymax=1.5, yoffset=1);
 
 | Estimator   | Hits within estimated R<sub>90</sub>| RMSE                   | MAE                 |
 |-------------|-------------------------------------|------------------------|---------------------|
-| 5x5         |             `r signif(e$hits55,3)`% | `r signif(e$rmse55,3)` |`r signif(e$mae55,3)`| 
-| 2x10 (9)    |              `r signif(e$hits9,3)`% | `r signif(e$rmse9,3)`  |`r signif(e$mae9,3)` |
-| 2x10 (6&9)  |             `r signif(e$hits69,3)`% | `r signif(e$rmse69,3)` |`r signif(e$mae69,3)`|
+| 5x5 (NRA)   |             `r signif(e$hits55,3)`% | `r signif(e$rmse55,3)` |`r signif(e$mae55,3)`| 
+| 5x5 (4th)   |              `r signif(e$hits4,3)`% | `r signif(e$rmse4,3)`  |`r signif(e$mae4,3)` | 
+| 4x5 (4th)   |             `r signif(e$hits44,3)`% | `r signif(e$rmse44,3)` |`r signif(e$mae44,3)`| 
+| 2x10 (9th)  |              `r signif(e$hits9,3)`% | `r signif(e$rmse9,3)`  |`r signif(e$mae9,3)` |
+| 2x10 (6&9th)|             `r signif(e$hits69,3)`% | `r signif(e$rmse69,3)` |`r signif(e$mae69,3)`|
 | Rayleigh 20 |             `r signif(e$hits20,3)`% | `r signif(e$rmse20,3)` |`r signif(e$mae20,3)`|
 | MLE 20      |            `r signif(e$hitsmle,3)`% | `r signif(e$rmsemle,3)`|`r signif(e$maemle,3)`|
 
@@ -283,14 +320,16 @@ set.seed(44)
 group_examples(flier_rate=0.05, flier_severity=5)
 ```
 ```{r fig_2, echo=FALSE, message=FALSE, warning=FALSE, fig.width=6, fig.height=4, dpi=150}
-e <- experiment(main='Contaminated Normal Distribution', ymax=1.2, flier_rate=0.05, flier_severity=5);
+e <- experiment(main='Contaminated Normal Distribution', ymax=1.2, flier_rate=0.05, flier_severity=5, legendpos='topleft');
 ```
 
 | Estimator   | Hits within estimated R<sub>90</sub>| RMSE                   | MAE                 |
 |-------------|-------------------------------------|------------------------|---------------------|
-| 5x5         |             `r signif(e$hits55,3)`% | `r signif(e$rmse55,3)` |`r signif(e$mae55,3)`| 
-| 2x10 (9)    |              `r signif(e$hits9,3)`% | `r signif(e$rmse9,3)`  |`r signif(e$mae9,3)` |
-| 2x10 (6&9)  |             `r signif(e$hits69,3)`% | `r signif(e$rmse69,3)` |`r signif(e$mae69,3)`|
+| 5x5 (NRA)   |             `r signif(e$hits55,3)`% | `r signif(e$rmse55,3)` |`r signif(e$mae55,3)`| 
+| 5x5 (4th)   |              `r signif(e$hits4,3)`% | `r signif(e$rmse4,3)`  |`r signif(e$mae4,3)` | 
+| 4x5 (4th)   |             `r signif(e$hits44,3)`% | `r signif(e$rmse44,3)` |`r signif(e$mae44,3)`| 
+| 2x10 (9th)  |              `r signif(e$hits9,3)`% | `r signif(e$rmse9,3)`  |`r signif(e$mae9,3)` |
+| 2x10 (6&9th)|             `r signif(e$hits69,3)`% | `r signif(e$rmse69,3)` |`r signif(e$mae69,3)`|
 | Rayleigh 20 |             `r signif(e$hits20,3)`% | `r signif(e$rmse20,3)` |`r signif(e$mae20,3)`|
 | MLE 20      |            `r signif(e$hitsmle,3)`% | `r signif(e$rmsemle,3)`|`r signif(e$maemle,3)`|
 
@@ -307,14 +346,16 @@ set.seed(45)
 group_examples(eccentricity=0.75)
 ```
 ```{r fig_3, echo=FALSE, message=FALSE, warning=FALSE, fig.width=6, fig.height=4, dpi=150}
-e <- experiment(main='Unequal Variance', ymax=1.5, eccentricity=0.75);
+e <- experiment(main='Unequal Variance', ymax=1.5, eccentricity=0.75, legendpos='topleft');
 ```
 
 | Estimator   | Hits within estimated R<sub>90</sub>| RMSE                   | MAE                 |
 |-------------|-------------------------------------|------------------------|---------------------|
-| 5x5         |             `r signif(e$hits55,3)`% | `r signif(e$rmse55,3)` |`r signif(e$mae55,3)`| 
-| 2x10 (9)    |              `r signif(e$hits9,3)`% | `r signif(e$rmse9,3)`  |`r signif(e$mae9,3)` |
-| 2x10 (6&9)  |             `r signif(e$hits69,3)`% | `r signif(e$rmse69,3)` |`r signif(e$mae69,3)`|
+| 5x5 (NRA)   |             `r signif(e$hits55,3)`% | `r signif(e$rmse55,3)` |`r signif(e$mae55,3)`| 
+| 5x5 (4th)   |              `r signif(e$hits4,3)`% | `r signif(e$rmse4,3)`  |`r signif(e$mae4,3)` | 
+| 4x5 (4th)   |             `r signif(e$hits44,3)`% | `r signif(e$rmse44,3)` |`r signif(e$mae44,3)`| 
+| 2x10 (9th)  |              `r signif(e$hits9,3)`% | `r signif(e$rmse9,3)`  |`r signif(e$mae9,3)` |
+| 2x10 (6&9th)|             `r signif(e$hits69,3)`% | `r signif(e$rmse69,3)` |`r signif(e$mae69,3)`|
 | Rayleigh 20 |             `r signif(e$hits20,3)`% | `r signif(e$rmse20,3)` |`r signif(e$mae20,3)`|
 | MLE 20      |            `r signif(e$hitsmle,3)`% | `r signif(e$rmsemle,3)`|`r signif(e$maemle,3)`|
 
@@ -333,9 +374,11 @@ e <- experiment(main='All Factors', ymax=1, yoffset=1, eccentricity=0.75, flier_
 
 | Estimator   | Hits within estimated R<sub>90</sub>| RMSE                   | MAE                 |
 |-------------|-------------------------------------|------------------------|---------------------|
-| 5x5         |             `r signif(e$hits55,3)`% | `r signif(e$rmse55,3)` |`r signif(e$mae55,3)`| 
-| 2x10 (9)    |              `r signif(e$hits9,3)`% | `r signif(e$rmse9,3)`  |`r signif(e$mae9,3)` |
-| 2x10 (6&9)  |             `r signif(e$hits69,3)`% | `r signif(e$rmse69,3)` |`r signif(e$mae69,3)`|
+| 5x5 (NRA)   |             `r signif(e$hits55,3)`% | `r signif(e$rmse55,3)` |`r signif(e$mae55,3)`| 
+| 5x5 (4th)   |              `r signif(e$hits4,3)`% | `r signif(e$rmse4,3)`  |`r signif(e$mae4,3)` | 
+| 4x5 (4th)   |             `r signif(e$hits44,3)`% | `r signif(e$rmse44,3)` |`r signif(e$mae44,3)`| 
+| 2x10 (9th)  |              `r signif(e$hits9,3)`% | `r signif(e$rmse9,3)`  |`r signif(e$mae9,3)` |
+| 2x10 (6&9th)|             `r signif(e$hits69,3)`% | `r signif(e$rmse69,3)` |`r signif(e$mae69,3)`|
 | Rayleigh 20 |             `r signif(e$hits20,3)`% | `r signif(e$rmse20,3)` |`r signif(e$mae20,3)`|
 | MLE 20      |            `r signif(e$hitsmle,3)`% | `r signif(e$rmsemle,3)`|`r signif(e$maemle,3)`|
 
@@ -349,8 +392,10 @@ e <- experiment(main='Actual Experimental Data', ymax=0.08, simulate=F, legendpo
 
 | Estimator   | Hits within estimated R<sub>90</sub>| RMSE                   | MAE                 |
 |-------------|-------------------------------------|------------------------|---------------------|
-| 2x10 (9)    |              `r signif(e$hits9,3)`% | `r signif(e$rmse9,3)`  |`r signif(e$mae9,3)` |
-| 2x10 (6&9)  |             `r signif(e$hits69,3)`% | `r signif(e$rmse69,3)` |`r signif(e$mae69,3)`|
+| 5x5 (4th)   |              `r signif(e$hits4,3)`% | `r signif(e$rmse4,3)`  |`r signif(e$mae4,3)` | 
+| 4x5 (4th)   |             `r signif(e$hits44,3)`% | `r signif(e$rmse44,3)` |`r signif(e$mae44,3)`| 
+| 2x10 (9th)  |              `r signif(e$hits9,3)`% | `r signif(e$rmse9,3)`  |`r signif(e$mae9,3)` |
+| 2x10 (6&9th)|             `r signif(e$hits69,3)`% | `r signif(e$rmse69,3)` |`r signif(e$mae69,3)`|
 | Rayleigh 20 |             `r signif(e$hits20,3)`% | `r signif(e$rmse20,3)` |`r signif(e$mae20,3)`|
 | MLE 20      |            `r signif(e$hitsmle,3)`% | `r signif(e$rmsemle,3)`|`r signif(e$maemle,3)`|
 
