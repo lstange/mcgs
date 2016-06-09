@@ -172,6 +172,46 @@ class ShotGroup {
       amr /= x_.size();
       return amr;
     }
+
+    double trimmed_mle(void) const
+    {
+      if (x_.size() < 2) return std::numeric_limits<double>::quiet_NaN();;
+      double center_x = ( accumulate(x_.begin(), x_.end(), 0.) 
+                        - *std::min_element(x_.begin(), x_.end())
+                        - *std::max_element(x_.begin(), x_.end())
+                        ) / (x_.size() - 2);
+      double center_y = ( accumulate(y_.begin(), y_.end(), 0.) 
+                        - *std::min_element(y_.begin(), y_.end())
+                        - *std::max_element(y_.begin(), y_.end())
+                        ) / (y_.size() - 2);
+      std::vector<double> r2;
+      for (int i = 0; i < x_.size(); i++) {
+        double r = hypot(x_.at(i) - center_x, y_.at(i) - center_y);
+        r2.push_back(r * r);
+      }
+      return sqrt(accumulate(r2.begin(), r2.end(), 0.) - *std::max_element(r2.begin(), r2.end()));
+    }
+
+    double Qn(const std::vector<double>& x, bool tweak) const
+    {
+      if (x.size() < 2) return std::numeric_limits<double>::quiet_NaN();;
+      std::vector<double> d;
+      size_t h = x.size() / 2 + 1;
+      size_t k = (tweak ? 3 * x.size() * (x.size() - 1) / 8 : h * (h - 1) / 2);
+      for (int i = 0; i < x.size() - 1; i++) {
+        for (int j = i + 1; j < x.size(); j++) {
+          d.push_back(fabs(x.at(i) - x.at(j)));
+        }
+      }
+      std::vector<double>::iterator it = d.begin() + k; 
+      nth_element(d.begin(), it, d.end());
+      return 2.219 * (*it);
+    }
+
+    double hypot_qnx_qny(bool tweak = false) const
+    {
+      return hypot(Qn(x_, tweak), Qn(y_, tweak));
+    }
 };
 
 class DescriptiveStat
@@ -492,7 +532,7 @@ int main(int argc, char* argv[])
   } else if (shots_in_group > 7) {
     sixtynine_to_r90hat_factor = 0.69;
   }
-  DescriptiveStat gs_s, gs_s2, bgs_s, ags_s, ags_s2, mgs_s, amr_s, aamr_s, rayleigh_s, mle_s, median_r_s;
+  DescriptiveStat gs_s, gs_s2, bgs_s, ags_s, ags_s2, mgs_s, amr_s, aamr_s, rayleigh_s, tray_s, tmle_s, oqnxy_s, tqnxy_s, mle_s, median_r_s;
   DescriptiveStat worst_r_s, second_worst_r_s;
   std::map< std::pair<int, int>, DescriptiveStat> sixtynine_r_s;
   DescriptiveStat nsd_s, wr_s, swr_s, sixtynine_s;
@@ -512,7 +552,7 @@ int main(int argc, char* argv[])
   double r90hat_mle = 0;
   for (int experiment = 0; experiment < experiments; experiment++) {
     double best_gs = 0;
-    DescriptiveStat gs, gs2, amr, wr, swr, sixtynine, rayleigh, mle;
+    DescriptiveStat gs, gs2, amr, wr, swr, sixtynine, rayleigh, tray, mle;
     std::vector<double> gsg_v;
     for (int j = 0; j < groups_in_experiment; j++) { 
       ShotGroup g; 
@@ -570,6 +610,14 @@ int main(int argc, char* argv[])
       rayleigh.push(this_rayleigh);
       rayleigh_s.push(this_rayleigh);
       
+      double this_tray = sqrt(accumulate(r2.begin(), r2.end(), 0.) - *std::max_element(r2.begin(), r2.end()));
+      tray.push(this_tray);
+      tray_s.push(this_tray);
+      
+      tmle_s.push(g.trimmed_mle());
+      oqnxy_s.push(g.hypot_qnx_qny());
+      tqnxy_s.push(g.hypot_qnx_qny(true));
+
       double this_mle = sqrt(accumulate(r2.begin(), r2.end(), 0.));
       mle.push(this_mle);
       mle_s.push(mle_factor * this_mle);
@@ -620,19 +668,24 @@ int main(int argc, char* argv[])
     }
   } // Next experiment
   if (groups_in_experiment == 1) {
+    std::cout << "--- Precision estimators ---\n"; 
     gs_s.show("Group size:");
     if (shots_in_group == 4) {
       nsd_s.show("Kuchnost:");
     }
-    gs_s2.show("Group size (excluding worst shot in group):");
     amr_s.show("Average Miss Radius:");
+    std::cout << "--- Robust precision estimators ---\n"; 
+    gs_s2.show("Group size (excluding worst shot in group):");
+    tmle_s.show("Trimmed MLE from trimmed mean:");
+    oqnxy_s.show("Original Qn:");
+    tqnxy_s.show("Tweaked Qn:");
+    std::cout << "--- Hit probability estimators ---\n"; 
     double theoretical_cep = 0;
     if (proportion_of_outliers == 0) {
       theoretical_cep =  sqrt(-2*log(0.5));
     }
     rayleigh_s.show("Rayleigh CEP estimator:", theoretical_cep);
     mle_s.show("Maximum likelihood CEP estimator:", theoretical_cep);
-    median_r_s.show("Median CEP estimator:"); // Not showing theoretical_cep because median has known bias
     double theoretical_worst = 0;
     if (proportion_of_outliers == 0) {
       switch (shots_in_group) {
@@ -647,6 +700,9 @@ int main(int argc, char* argv[])
       }
     }
     worst_r_s.show("Worst miss radius:", theoretical_worst);
+    std::cout << "--- Robust hit probability estimators ---\n"; 
+    median_r_s.show("Median CEP estimator:"); // Not showing theoretical_cep because median has known bias
+    tray_s.show("Trimmed MLE from center:");
     double theoretical_second_worst = 0;
     double theoretical_sixtynine = 0;
     if (proportion_of_outliers == 0) {
@@ -664,7 +720,8 @@ int main(int argc, char* argv[])
       }
     }
     second_worst_r_s.show("Second worst miss radius:", theoretical_second_worst);
-    // Find combination of two rank order statistics with lowest CV
+    std::cout << "--- Combinations of two order statistics ---\n"; 
+    // Find combination of two order statistics with lowest CV
     {
       int best_pos = 0;
       double best_cv = 0;
@@ -704,6 +761,7 @@ int main(int argc, char* argv[])
       sixtynine_s.show(":");
     }
   }  
+  std::cout << "--- R90 estimators ---\n"; 
   double denominator = shots_in_group * ((double)groups_in_experiment * (experiments - 1));
   if (wmr_to_r90hat_factor > 0) {
     std::cout << "Percent of hits within " << wmr_to_r90hat_factor 

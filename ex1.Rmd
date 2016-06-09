@@ -6,7 +6,8 @@ output:
 ---
 
 ```{r functions, echo=FALSE, message=FALSE, warning=FALSE}
-n <- 10000
+n <- 1000
+set.seed(271828)
 
 bivariate_normal <- function(n, sd = 1, flier_rate = 0, flier_severity = 3)
 {
@@ -30,15 +31,19 @@ group_size <- function(h)
     return (0)
   }
   best_so_far <- sqrt((h$x[1]-h$x[2])*(h$x[1]-h$x[2])+(h$y[1]-h$y[2])*(h$y[1]-h$y[2]))
+  index_a <- 1
+  index_b <- 2
   for (i in 1:(n - 1)) {
     for (j in (i + 1):n) {
       candidate = sqrt((h$x[i]-h$x[j])*(h$x[i]-h$x[j])+(h$y[i]-h$y[j])*(h$y[i]-h$y[j]))
       if (best_so_far < candidate) {
         best_so_far = candidate
+        index_a <- i
+        index_b <- j
       }
     }
   }
-  return (best_so_far)
+  return (data.frame(s=best_so_far, index_a=index_a, index_b=index_b))
 }
 
 excluding_worst <- function(h)
@@ -69,18 +74,28 @@ excluding_worst <- function(h)
   # Calculate group size without either one, return the smaller number.
   best_so_far_excluding_a <- 0
   best_so_far_excluding_b <- 0
+  index_aa <- index_a
+  index_bb <- index_b
   for (i in 1:(n - 1)) {
     for (j in (i + 1):n) {
       candidate = sqrt((h$x[i]-h$x[j])*(h$x[i]-h$x[j])+(h$y[i]-h$y[j])*(h$y[i]-h$y[j]))
       if (i != index_a & j != index_a & best_so_far_excluding_a < candidate) {
         best_so_far_excluding_a <- candidate
+        index_aa <- i
+        index_bb <- j
       }
       if (i != index_b & j != index_b & best_so_far_excluding_b < candidate) {
         best_so_far_excluding_b <- candidate
+        index_aa <- i
+        index_bb <- j
       }
     }
   }
-  return (min(best_so_far_excluding_a, best_so_far_excluding_b))
+  if (best_so_far_excluding_a < best_so_far_excluding_b) {
+    return (data.frame(s=best_so_far_excluding_a, a=index_aa, b=index_bb, w=index_a))
+  } else {
+    return (data.frame(s=best_so_far_excluding_b, a=index_aa, b=index_bb, w=index_b))
+  }
 }
 
 experiment <- function(main, flier_rate = 0, flier_severity = 3)
@@ -94,24 +109,45 @@ experiment <- function(main, flier_rate = 0, flier_severity = 3)
     c <- bivariate_normal(5, flier_rate = flier_rate, flier_severity = flier_severity)
     d <- bivariate_normal(5, flier_rate = flier_rate, flier_severity = flier_severity)
     e <- bivariate_normal(5, flier_rate = flier_rate, flier_severity = flier_severity)
-    five5[k] <- (group_size(a) + group_size(b) + group_size(c) + group_size(d) + group_size(e)) / 5
-    four5[k] <- (group_size(a) + group_size(b) + group_size(c) + group_size(d)) / 4
-    two10ex1[k] <- (excluding_worst(rbind(a,b)) + excluding_worst(rbind(c,d))) / 2 
+    five5[k] <- (group_size(a)$s + group_size(b)$s + group_size(c)$s + group_size(d)$s + group_size(e)$s) / 5
+    four5[k] <- (group_size(a)$s + group_size(b)$s + group_size(c)$s + group_size(d)$s) / 4
+    two10ex1[k] <- (excluding_worst(rbind(a,b))$s + excluding_worst(rbind(c,d))$s) / 2 
   }
   hist55 <- hist(five5, plot=F, breaks=50);
-  plot(smooth.spline(hist55$mids, hist55$density), col='red', type='l', xlab='Average group size', ylab='PDF', xlim=c(0,5), ylim=c(0,1.2), main=main);
+  plot(smooth.spline(hist55$mids, hist55$density), col='red', type='l', xlab='Average group size', ylab='PDF', xlim=c(0,5), ylim=c(0,1.5), main=main);
   hist45 <- hist(four5, plot=F, breaks=50);
   lines(smooth.spline(hist45$mids, hist45$density), col='green', lty=2);
   hist210 <- hist(two10ex1, plot=F, breaks=50);
   lines(smooth.spline(hist210$mids, hist210$density), col='blue', lty=3);
-  legend("topleft", inset=.05, c('Five 5-shot groups','Four 5-shot groups', 'Two 10-shot groups\nexcl. worst shot in each'), lwd=2, lty=c(1,2,3), col=c('red','green','blue'), bty='n');
+  leg1 <- paste('Five 5-shot groups, CV=', signif(sd(five5)/mean(five5),3), sep=' ')
+  leg2 <- paste('Four 5-shot groups, CV=', signif(sd(four5)/mean(four5),3), sep=' ')
+  leg3 <- paste('Two 10-shot groups excluding worst shots, CV=', signif(sd(two10ex1)/mean(two10ex1),3), sep=' ')
+  legend("topleft", inset=0, c(leg1, leg2, leg3), lwd=2, lty=c(1,2,3), col=c('red','green','blue'), bty='n');
 }
 ```
 
-```{r ex1,  echo=FALSE, message=FALSE, warning=FALSE, fig.width=6, fig.height=6, dpi=150}
+```{r ex0, echo=FALSE, message=FALSE, warning=FALSE, fig.width=6, fig.height=2, dpi=150}
+  old.par <- par(mfrow=c(1,3))
+  par(mar=c(0,0,0,0))
+  for (i in 1:3) {
+    a <- bivariate_normal(10)
+    plot(a$x, a$y, type='p', xlim=c(-3,3), ylim=c(-3,3), axes=F, pch=19)
+    axis(1, pos=0, labels=NA, col='gray')
+    axis(2, pos=0, labels=NA, col='gray') 
+    g <- group_size(a)
+    lines(c(a[g$index_a,]$x, a[g$index_b,]$x), c(a[g$index_a,]$y, a[g$index_b,]$y), col='red', lty=1)
+    g <- excluding_worst(a)
+    lines(c(a[g$a,]$x, a[g$b,]$x), c(a[g$a,]$y, a[g$b,]$y), col='blue', lty=2)
+    points(a[g$w,]$x, a[g$w,]$y, pch=24, cex=2, col='red')
+  }
+  par(old.par)
+```
+
+
+```{r ex1,  echo=FALSE, message=FALSE, warning=FALSE, fig.width=6, fig.height=4, dpi=150}
 experiment(main='Normal Distribution');
 ```
 
-```{r ex2,  echo=FALSE, message=FALSE, warning=FALSE, fig.width=6, fig.height=6, dpi=150}
-experiment(main='3% Fliers 3x Worse', flier_rate=0.03, flier_severity=3);
+```{r ex2,  echo=FALSE, message=FALSE, warning=FALSE, fig.width=6, fig.height=4, dpi=150}
+experiment(main='Contaminated Normal: 3% Fliers 3x Worse', flier_rate=0.03, flier_severity=3);
 ```
