@@ -126,14 +126,15 @@ The following table shows conversion factors from a single order statistic to R<
 |---------------:|---------|-------------------|----------------------|
 |R<sub>1:1</sub> |3        |2.222              |1.712                 |
 |R<sub>3:3</sub> |1.414    |1.289              |1.176                 |
+|R<sub>4:5</sub> |1.579    |1.478              |1.386                 |
 |R<sub>5:5</sub> |1.172    |1.103              |1.038                 |
-|R<sub>9:10</sub>|**1.187**|1.149              |1.112                 |
+|R<sub>9:10</sub>|1.187    |1.149              |1.112                 |
 
 R<sub>M:N</sub> stands for "*M*th smallest miss radius in a group of N shots". R<sub>5:5</sub> is the worst miss radius in a five shot group, and R<sub>9:10</sub> is second worst miss radius in a ten shot group.
 
-For example, to estimate R<sub>90</sub> (the smallest radius that will include 90% of the impacts) from one group, take R<sub>5:5</sub> or R<sub>9:10</sub> and multiply by 1.2.
+For example, to estimate R<sub>90</sub> (the smallest radius that will include 90% of the impacts) from one five-shot group, take R<sub>4:5</sub> and multiply by 1.6.
 
-Because distribution of R<sub>M:N</sub> is asymmetric, conversion factors are lower for average of R<sub>M:N</sub> over several groups, and 1.2 factor becomes conservative. The case of one-shot "group" is equivalent to Rayleigh estimator described above.
+Because distribution of R<sub>M:N</sub> is asymmetric, conversion factors are lower for average of R<sub>M:N</sub> over several groups. The case of one-shot "group" is equivalent to Rayleigh estimator described above.
 
 ### Estimating R<sub>90</sub> from Two Order Statistics
 
@@ -196,5 +197,5 @@ To compare with regular group size:
 ### tl,dr: Rules of Thumb
 
   + Assuming perfect zero, CEP in cm is about the same as 5 shot group size in inches (more precisely, coefficient is 2.6 rather than 2.54)
-  + R<sub>90</sub> is about 20% larger than 9<sup>th</sup> miss radius in a 10 shot group
-  + R<sub>90</sub> is about 70% of sum of 6<sup>th</sup> and 9<sup>th</sup> miss radiuses in a 10 shot group
+  + R<sub>90</sub> is about 60% larger than 4<sup>th</sup> miss radius in a 5 shot group (50% larger than average of two groups, 40% larger than average of many groups)
+  + R<sub>90</sub> is about 69% of sum of 6<sup>th</sup> and 9<sup>th</sup> miss radiuses in a 10 shot group
