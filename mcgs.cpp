@@ -11,6 +11,8 @@
 #include <map>
 #include <cmath>
 #include <numeric>
+#include <complex>
+#include <functional>
 #include <iostream>
 #include <stdlib.h>
 
@@ -21,112 +23,101 @@ typedef struct { uint64_t state;  uint64_t inc; } pcg32_random_t;
 
 uint32_t pcg32_random_r(pcg32_random_t* rng)
 {
-    uint64_t oldstate = rng->state;
-    // Advance internal state
-    rng->state = oldstate * 6364136223846793005ULL + (rng->inc|1);
-    // Calculate output function (XSH RR), uses old state for max ILP
-    uint32_t xorshifted = ((oldstate >> 18u) ^ oldstate) >> 27u;
-    uint32_t rot = oldstate >> 59u;
-    return (xorshifted >> rot) | (xorshifted << ((-rot) & 31));
+  uint64_t oldstate = rng->state;
+  // Advance internal state
+  rng->state = oldstate * 6364136223846793005ULL + (rng->inc|1);
+  // Calculate output function (XSH RR), uses old state for max ILP
+  uint32_t xorshifted = ((oldstate >> 18u) ^ oldstate) >> 27u;
+  uint32_t rot = oldstate >> 59u;
+  return (xorshifted >> rot) | (xorshifted << ((-rot) & 31));
 }
+
+struct ConvexHullPoint {
+public:  
+  ConvexHullPoint(const std::complex<double>& p) : point_(p) {}
+  
+  // For lexicographic sort: first by x, then by y
+  bool operator<(const ConvexHullPoint& other) const
+  {
+    if (point_.real() < other.point_.real()) {
+      return true;
+    } else if (point_.real() > other.point_.real()) {
+      return false;
+    } else {
+      return point_.imag() < other.point_.imag();
+    }
+  }
+
+  bool operator!=(const std::complex<double>& other) const
+  {
+    return point_ != other;
+  }
+  
+  // Distance to another point
+  double distanceTo(const ConvexHullPoint& other) const
+  {
+    return std::abs(point_ - other.point_);
+  }
+
+  double inline x(void) const { return point_.real(); }
+  double inline y(void) const { return point_.imag(); }
+
+private:
+  std::complex<double> point_;
+};
 
 class ShotGroup {
   private:
-    std::vector<double> x_;
-    std::vector<double> y_;
+    // Use complex type to store impact coordinates
+    std::vector<std::complex<double> > impact_;
   
+    // Cross product of vectors OA and OB, positive if OAB makes a CCW turn
+    double cross_product( const ConvexHullPoint& O
+                        , const ConvexHullPoint& A
+                        , const ConvexHullPoint& B
+                        ) const
+    {
+      return (A.x() - O.x()) * (B.y() - O.y())
+           - (A.y() - O.y()) * (B.x() - O.x());
+    }
+
+    double distance(unsigned a, unsigned b) const
+    {
+      return std::abs(impact_.at(a) - impact_.at(b));
+    }
+    
   public:
-    void add(double x, double y)
+    void add(const std::complex<double>& p)
     {
-      x_.push_back(x);
-      y_.push_back(y);
+      impact_.push_back(p);
     }
     
-    double distance(int a, int b) const
+    double group_size(bool excluding_worst = false) const
     {
-      double x = x_.at(a) - x_.at(b);
-      double y = y_.at(a) - y_.at(b);
-      return hypot(x, y);
-    }
-    
-    double group_size(void) const
-    {
-      if (x_.size() < 2) return 0;
-      double best_so_far = distance(0, 1);
-      for (unsigned i = 0; i < x_.size() - 1; i++) {
-        for (unsigned j = i + 1; j < x_.size(); j++) {
-          double candidate = distance(i, j);
-          if (best_so_far < candidate) {
-            best_so_far = candidate;
-          }
-        }
+      if (impact_.size() < 32) {
+        return group_size_brute_force(excluding_worst); // Faster for small groups
+      } else {
+        return group_size_convex_hull(excluding_worst); // Faster for large groups
       }
-      return best_so_far;
-    }
-    
-    // As per NSD (page 181) should be within 15 cm at 100 m
-    // Group size 2.79295 corresponds to kuchnost~=3.15863,
-    // so this is equivalent to 4.56 MOA.
-    double nsd_kuchnost(void) const
-    {
-      // Only defined for 4 shot groups
-      if (x_.size() != 4) return std::numeric_limits<double>::quiet_NaN();
-      
-      // Find STP using all 4 shots
-      double stp_x = (x_.at(0) + x_.at(1) + x_.at(2) + x_.at(3)) / 4;
-      double stp_y = (y_.at(0) + y_.at(1) + y_.at(2) + y_.at(3)) / 4;
-      
-      // Find minimum radius of circle with center at STP that encloses all shots 
-      double r = 0;
-      for (unsigned i = 0; i < 4; i++) {
-        double candidate = hypot(stp_x - x_.at(i), stp_y - y_.at(i));
-        if (r < candidate) {
-          r = candidate;
-        }
-      }
-      
-      // Exclude outlier, if any
-      for (unsigned i = 0; i < 4; i++) {
-      
-        // STP excluding this shot
-        double stp3_x = (stp_x * 4 - x_.at(i)) / 3;
-        double stp3_y = (stp_y * 4 - y_.at(i)) / 3;
-        
-        // Minimum radius of circle with center at STP of three shots excluding this shot
-        double r2 = 0;
-        for (unsigned j = 0; j < 4; j++) {
-          if (i == j) {
-            continue;
-          }
-          double candidate = hypot(stp_x - x_.at(j), stp_y - y_.at(j));
-          if (r2 < candidate) {
-            r2 = candidate;
-          }
-        }
-
-        // Outlier is a shot 2.5x or more distant from STP of other three shots
-        // than radius of the circle centered as STP of other three shots
-        // that covers these three shots
-        if (hypot(stp3_x - x_.at(i), stp3_y - y_.at(i)) > 2.5 * r2 && r > r2) {
-          r = r2;
-        }
-      }
-      
-      // Diameter
-      return 2 * r;
     }
 
-    double group_size_excluding_worst(void) const
+    // Brute force implementation, asymptotic complexity O(N^2)
+    double group_size_brute_force(bool excluding_worst = false) const
     {
-      // With two shots, excluding one results in a zero size group
-      if (x_.size() < 3) return 0;
+      unsigned n = impact_.size();
+      if (excluding_worst && n < 3) {
+        // With two shots, excluding one results in a zero size group
+        return 0;
+      } else if (n < 2) {
+        return 0;
+      }
       
       // Find the two impacts defining extreme spread
       double best_so_far = distance(0, 1);
-      int index_a = 0;
-      int index_b = 1;
-      for (unsigned i = 0; i < x_.size() - 1; i++) {
-        for (unsigned j = i + 1; j < x_.size(); j++) {
+      unsigned index_a = 0;
+      unsigned index_b = 1;
+      for (unsigned i = 0; i < n - 1; i++) {
+        for (unsigned j = i + 1; j < n; j++) {
           double candidate = distance(i, j);
           if (best_so_far < candidate) {
             best_so_far = candidate;
@@ -135,13 +126,17 @@ class ShotGroup {
           }
         }
       }
+      
+      if (!excluding_worst) {
+        return best_so_far;
+      }
 
       // Worst shot must be one of the impacts defining extreme spread.
       // Calculate group size without either one, return the smaller number.
       double best_so_far_excluding_a = 0;
       double best_so_far_excluding_b = 0;
-      for (unsigned i = 0; i < x_.size() - 1; i++) {
-        for (unsigned j = i + 1; j < x_.size(); j++) {
+      for (unsigned i = 0; i < n - 1; i++) {
+        for (unsigned j = i + 1; j < n; j++) {
           double candidate = distance(i, j);
           if (i != index_a && j != index_a && best_so_far_excluding_a < candidate) {
             best_so_far_excluding_a = candidate;
@@ -154,63 +149,181 @@ class ShotGroup {
       return std::min(best_so_far_excluding_a, best_so_far_excluding_b);
     }
 
+    // Same as group_size_brute_force(), but using convex hull.
+    // Asymptotic complexity O(N log N).
+    //
+    // Pass 0: find impacts a and b defining extreme spread. 
+    //         Return extreme spread if excluding_worst == false.
+    // Pass 1: find extreme spread excluding a
+    // Pass 2: find extreme spread excluding b
+    //
+    // Return the smaller of a and b
+    //
+    double group_size_convex_hull(bool excluding_worst = false) const
+    {
+      unsigned n = impact_.size();
+      if (excluding_worst && n < 3) {
+        // With two shots, excluding one results in a zero size group
+        return 0;
+      } else if (n < 2) {
+        return 0;
+      }
+
+      ConvexHullPoint a(impact_.at(0)); double extreme_spread_excluding_a = 0;
+      ConvexHullPoint b(impact_.at(1)); double extreme_spread_excluding_b = 0;
+      for (unsigned pass = 0; pass < 3; pass++) {
+
+        // Use Andrew's monotone chain 2D algorithm to construct convex hull 
+        std::vector<ConvexHullPoint> lower_hull;
+        std::vector<ConvexHullPoint> upper_hull;
+        {
+          std::vector<ConvexHullPoint> p;
+          for (unsigned i = 0; i < n; i++) {
+            if ( pass == 0
+              || ((pass == 1) && (a != impact_.at(i)))
+              || ((pass == 2) && (b != impact_.at(i)))
+               )
+            p.push_back(impact_.at(i));
+          }
+          std::sort(p.begin(), p.end());
+      
+          unsigned k = 0;
+          for (unsigned i = 0; i < p.size(); i++) { // lower hull
+            while (k >= 2 && cross_product(lower_hull.at(k - 2), lower_hull.at(k - 1), p.at(i)) <= 0) {
+              lower_hull.pop_back();
+              k--;
+            }
+            lower_hull.push_back(p.at(i));
+            k++;
+          }
+          k = 0;
+          for (unsigned i = 0; i < p.size(); i++) { // upper hull
+            while (k >= 2 && cross_product(upper_hull.at(k - 2), upper_hull.at(k - 1), p.at(i)) >= 0) {
+              upper_hull.pop_back();
+              k--;
+            }
+            upper_hull.push_back(p.at(i));
+            k++;
+          }
+        }
+
+        // Use rotating calipers algoritm to find most distant antipodal pair of hull points
+        double diameter = 0;
+        {
+          unsigned i = 0;
+          unsigned j = lower_hull.size() - 1;
+          while (i < upper_hull.size() - 1 || j > 0) {
+            double d = upper_hull.at(i).distanceTo(lower_hull.at(j));
+            if (diameter < d) {
+              diameter = d;
+              if (pass == 0) {
+                a = upper_hull.at(i);
+                b = lower_hull.at(j);
+              }
+            }
+            if (i == upper_hull.size() - 1) {
+              j--;
+            } else if (j == 0) {
+              i++;
+            } else if ( (upper_hull.at(i + 1).y() - upper_hull.at(i).y()) 
+                      * (lower_hull.at(j).x() - lower_hull.at(j - 1).x())
+                      > (upper_hull.at(i + 1).x() - upper_hull.at(i).x()) 
+                      * (lower_hull.at(j).y() - lower_hull.at(j - 1).y())
+                      ) {
+              i++;
+            } else {
+              j--;
+            }
+          }
+        }
+        switch (pass) {
+          case 0:
+            if (!excluding_worst) {
+              return diameter;
+            }
+            break;
+          case 1:
+            extreme_spread_excluding_a = diameter;
+            break;
+          case 2:
+            extreme_spread_excluding_b = diameter;
+            break;
+        }
+      }
+      return std::min(extreme_spread_excluding_a, extreme_spread_excluding_b);
+    }
+    
+    // As per NSD (page 181) should be within 15 cm at 100 m
+    // Group size 2.79295 corresponds to kuchnost~=3.15863,
+    // so this is equivalent to 4.56 MOA.
+    double nsd_kuchnost(void) const
+    {
+      // Only defined for 4 shot groups
+      if (impact_.size() != 4) return std::numeric_limits<double>::quiet_NaN();
+      
+      // STP using all 4 shots
+      auto stp = (impact_.at(0) + impact_.at(1) + impact_.at(2) + impact_.at(3)) / 4.;
+      
+      // Minimum radius of circle with center at STP that encloses all shots 
+      double r = 0;
+      for (unsigned i = 0; i < 4; i++) {
+        double candidate = std::abs(stp - impact_.at(i));
+        if (r < candidate) {
+          r = candidate;
+        }
+      }
+      
+      // Exclude outlier, if any
+      for (unsigned i = 0; i < 4; i++) {
+      
+        // STP excluding this shot
+        auto stp3 = (stp * 4. - impact_.at(i)) / 3.;
+        
+        // Minimum radius of circle with center at STP of three shots excluding this shot
+        double r2 = 0;
+        for (unsigned j = 0; j < 4; j++) {
+          if (i == j) {
+            continue;
+          }
+          double candidate = std::abs(stp - impact_.at(i));
+          if (r2 < candidate) {
+            r2 = candidate;
+          }
+        }
+
+        // Outlier is a shot 2.5x or more distant from STP of other three shots
+        // than radius of the circle centered as STP of other three shots
+        // that covers these three shots
+        if (std::abs(stp3 - impact_.at(i)) > 2.5 * r2 && r > r2) {
+          r = r2;
+        }
+      }
+      
+      // Diameter
+      return 2 * r;
+    }
+
     double avg_miss_radius(void) const
     {
-      if (x_.size() < 2) return std::numeric_limits<double>::quiet_NaN();;
-      double center_x = 0;
-      double center_y = 0;
-      for (int i = 0; i < x_.size(); i++) {
-        center_x += x_.at(i);
-        center_y += y_.at(i);
+      unsigned n = impact_.size();
+      if (n < 2) return std::numeric_limits<double>::quiet_NaN();
+      std::complex<double> center = 0;
+      for (unsigned i = 0; i < n; i++) {
+        center += impact_.at(i);
       }
-      center_x /= x_.size();
-      center_y /= y_.size();
+      center /= n;
       double amr = 0;
-      for (int i = 0; i < x_.size(); i++) {
-        amr += hypot(x_.at(i) - center_x, y_.at(i) - center_y);
+      for (unsigned i = 0; i < n; i++) {
+        amr += std::abs(impact_.at(i) - center);
       }
-      amr /= x_.size();
+      amr /= n;
       return amr;
     }
 
-    double trimmed_mle(void) const
-    {
-      if (x_.size() < 2) return std::numeric_limits<double>::quiet_NaN();;
-      double center_x = ( accumulate(x_.begin(), x_.end(), 0.) 
-                        - *std::min_element(x_.begin(), x_.end())
-                        - *std::max_element(x_.begin(), x_.end())
-                        ) / (x_.size() - 2);
-      double center_y = ( accumulate(y_.begin(), y_.end(), 0.) 
-                        - *std::min_element(y_.begin(), y_.end())
-                        - *std::max_element(y_.begin(), y_.end())
-                        ) / (y_.size() - 2);
-      std::vector<double> r2;
-      for (int i = 0; i < x_.size(); i++) {
-        double r = hypot(x_.at(i) - center_x, y_.at(i) - center_y);
-        r2.push_back(r * r);
+    void show(void) const {
+      for (unsigned i = 0; i < impact_.size(); i++) {
+        std::cout << "g.add(std::complex<double>(" << impact_.at(i).real() << ", " << impact_.at(i).imag() << "));\n";
       }
-      return sqrt(accumulate(r2.begin(), r2.end(), 0.) - *std::max_element(r2.begin(), r2.end()));
-    }
-
-    double Qn(const std::vector<double>& x, bool tweak) const
-    {
-      if (x.size() < 2) return std::numeric_limits<double>::quiet_NaN();;
-      std::vector<double> d;
-      size_t h = x.size() / 2 + 1;
-      size_t k = (tweak ? 3 * x.size() * (x.size() - 1) / 8 : h * (h - 1) / 2);
-      for (int i = 0; i < x.size() - 1; i++) {
-        for (int j = i + 1; j < x.size(); j++) {
-          d.push_back(fabs(x.at(i) - x.at(j)));
-        }
-      }
-      std::vector<double>::iterator it = d.begin() + k; 
-      nth_element(d.begin(), it, d.end());
-      return 2.219 * (*it);
-    }
-
-    double hypot_qnx_qny(bool tweak = false) const
-    {
-      return hypot(Qn(x_, tweak), Qn(y_, tweak));
     }
 };
 
@@ -252,7 +365,7 @@ class DescriptiveStat
       return stdev() / mean();
     }
 
-    int count(void) const
+    unsigned count(void) const
     {
       return n_;
     }
@@ -266,22 +379,22 @@ class DescriptiveStat
     }
 
   private:
-    int n_;
+    unsigned n_;
     double m_;
     double s_;
 };
 
-static std::pair<double, double> pull_from_bivariate_normal(pcg32_random_t* prng, double deviation = 1.)
+static std::complex<double> pull_from_bivariate_normal(pcg32_random_t* prng, double deviation = 1.)
 {
   double u; do { u = ldexp(pcg32_random_r(prng), -32); } while (!u);
-  double v; do { v = ldexp(pcg32_random_r(prng), -32); } while (!v);
+  double v = ldexp(pcg32_random_r(prng), -32);
 
   // Box-Muller transform
   double r = deviation * sqrt(-2 * log(u));
   double x = r * cos(2 * M_PI * v);
   double y = r * sin(2 * M_PI * v);
 
-  return std::make_pair(x, y);
+  return std::complex<double>(x, y);
 }
 
 static double median(std::vector<double>& x)
@@ -302,9 +415,9 @@ static double median(std::vector<double>& x)
 }
 
 // Rank is zero-based
-static double kth_miss_radius(std::vector<double>& x, int k)
+static double kth_miss_radius(std::vector<double>& x, unsigned k)
 {
-  if (k < 0 || k >= x.size()) {
+  if (k >= x.size()) {
     return std::numeric_limits<double>::quiet_NaN();
   }
   std::vector<double>::iterator it = x.begin() + k; 
@@ -314,19 +427,98 @@ static double kth_miss_radius(std::vector<double>& x, int k)
 
 int main(int argc, char* argv[])
 {
-  int experiments = 0;
+#if 0 // For debugging
+  {
+    ShotGroup g; 
+g.add(std::complex<double>(1.35132, 0.870415));
+g.add(std::complex<double>(-1.03637, 0.51497));
+g.add(std::complex<double>(1.06082, 1.15651));
+g.add(std::complex<double>(1.26497, -0.395269));
+g.add(std::complex<double>(0.934907, -0.208869));
+    double r = g.group_size_convex_hull(0);
+std::cout << "Expected " << g.group_size_brute_force(0) << ", got " << r << "\n";    
+    return 0;
+  }
+#endif
+
+  pcg32_random_t prng = {0};
+  unsigned experiments = 0;
   if (argc > 1) {
     experiments = atoi(argv[1]);
+    
+    // Self-test
+    if (experiments == 0) {
+      for (unsigned pass = 0; pass < 2; pass++) {
+        std::cout << "Comparing group_size_brute_force(" << pass << ") and group_size_convex_hull(" << pass << ")\n";
+        {
+          double max_diff = 0;
+          for (unsigned i = 0; i < 1e6; i++) {
+            unsigned shots = pcg32_random_r(&prng) & 0xf;
+            ShotGroup g;
+            for (unsigned j = 0; j < shots; j++) {
+              auto p = pull_from_bivariate_normal(&prng);
+              g.add(p);
+            }
+            double gs = g.group_size_brute_force(pass);
+            double bis = g.group_size_convex_hull(pass);
+            double diff = fabs(bis - gs);
+            if (max_diff < diff) {
+              max_diff = diff;
+            }
+            if (diff > 1e-8) {
+              std::cout << "Expected " << gs << ", got " << bis << "\n";
+              g.show();
+              return 0;
+            }
+          }
+          std::cout << "Max difference " << max_diff << "\n";
+        }
+      } 
+      std::cout << "\tgroup_size_brute_force()\tgroup_size_convex_hull()\n";
+      for (unsigned shots = 4; shots <= 256; shots *= 2) {
+        prng = {};
+        std::cout << shots << " shots:\t";
+        time_t start_time;
+        time(&start_time);
+        double a = 0;
+        for (unsigned i = 0; i < 1e6; i++) {
+          ShotGroup g;
+          for (unsigned j = 0; j < shots; j++) {
+            auto p = pull_from_bivariate_normal(&prng);
+            g.add(p);
+          }
+          a += g.group_size_brute_force();
+        }
+        time_t end_time;
+        time(&end_time);
+        std::cout << (end_time - start_time) << " µs, sum=" << a;
+
+        prng = {};
+        std::cout << "\t";
+        time(&start_time);
+        double b = 0;
+        for (unsigned i = 0; i < 1e6; i++) {
+          ShotGroup g;
+          for (unsigned j = 0; j < shots; j++) {
+            auto p = pull_from_bivariate_normal(&prng);
+            g.add(p);
+          }
+          b += g.group_size_convex_hull();
+        }
+        time(&end_time);
+        std::cout << (end_time - start_time) << " µs, sum=" << b << "\n";
+      }
+      return 0;
+    }
   } else {
     std::cerr << "Usage: mcgs experiments [[[[shots_in_group] groups_in_experiment] proportion_of_outliers] outlier_severity]\n";
     return -1;
   }
-  pcg32_random_t prng = {0};
-  int shots_in_group = 5;
+  unsigned shots_in_group = 5;
   if (argc > 2) {
     shots_in_group = atoi(argv[2]);
   }
-  int groups_in_experiment = 1;
+  unsigned groups_in_experiment = 1;
   if (argc > 3) {
     groups_in_experiment = atoi(argv[3]);
   }
@@ -351,7 +543,7 @@ int main(int argc, char* argv[])
   const double rayleigh_cep_factor = sqrt(4 * log(2) / M_PI) / shots_in_group; // 0.9394/shots
   
   double mle_factor = sqrt(log(2) / M_PI);
-  for (int i = 0; i < shots_in_group; i++) {
+  for (unsigned i = 0; i < shots_in_group; i++) {
     mle_factor *= 4;
     if (i != shots_in_group - 1) {
       mle_factor *= i + 1;
@@ -367,9 +559,9 @@ int main(int argc, char* argv[])
   double mle_to_r90hat_factor = 0;
   
   // http://ballistipedia.com/images/7/7a/Statistical_Inference_for_Rayleigh_Distributions_-_Siddiqui%2C_1964.pdf
-  std::pair<int, int> sixtynine_rank( (int)(0.639 * (shots_in_group + 1)) - 1
-                                    , (int)(0.927 * (shots_in_group + 1)) - 1
-                                    );
+  std::pair<unsigned, unsigned> sixtynine_rank( (unsigned)(0.639 * (shots_in_group + 1)) - 1
+                                              , (unsigned)(0.927 * (shots_in_group + 1)) - 1
+                                              );
   if (shots_in_group == 10) { // Suboptimal, but more robust
     sixtynine_rank.first = 6 - 1;
     sixtynine_rank.second = 9 - 1;
@@ -532,17 +724,17 @@ int main(int argc, char* argv[])
   } else if (shots_in_group > 7) {
     sixtynine_to_r90hat_factor = 0.69;
   }
-  DescriptiveStat gs_s, gs_s2, bgs_s, ags_s, ags_s2, mgs_s, amr_s, aamr_s, rayleigh_s, tray_s, tmle_s, oqnxy_s, tqnxy_s, mle_s, median_r_s;
+  DescriptiveStat gs_s, gs_s2, bgs_s, ags_s, ags_s2, mgs_s, amr_s, aamr_s, rayleigh_s, mle_s, median_r_s;
   DescriptiveStat worst_r_s, second_worst_r_s;
-  std::map< std::pair<int, int>, DescriptiveStat> sixtynine_r_s;
+  std::map< std::pair<unsigned, unsigned>, DescriptiveStat> sixtynine_r_s;
   DescriptiveStat nsd_s, wr_s, swr_s, sixtynine_s;
-  int hits_wmr = 0;
-  int hits_swmr = 0;
-  int hits_swmrr = 0;
-  int hits_gs = 0;
-  int hits_sixtynine = 0;
-  int hits_rayleigh = 0;
-  int hits_mle = 0;
+  unsigned hits_wmr = 0;
+  unsigned hits_swmr = 0;
+  unsigned hits_swmrr = 0;
+  unsigned hits_gs = 0;
+  unsigned hits_sixtynine = 0;
+  unsigned hits_rayleigh = 0;
+  unsigned hits_mle = 0;
   double r90hat_wmr = 0;
   double r90hat_swmr = 0;
   double r90hat_swmrr = 0;
@@ -550,25 +742,23 @@ int main(int argc, char* argv[])
   double r90hat_sixtynine = 0;
   double r90hat_rayleigh = 0;
   double r90hat_mle = 0;
-  for (int experiment = 0; experiment < experiments; experiment++) {
+  for (unsigned experiment = 0; experiment < experiments; experiment++) {
     double best_gs = 0;
-    DescriptiveStat gs, gs2, amr, wr, swr, sixtynine, rayleigh, tray, mle;
+    DescriptiveStat gs, gs2, amr, wr, swr, sixtynine, rayleigh, mle;
     std::vector<double> gsg_v;
-    for (int j = 0; j < groups_in_experiment; j++) { 
+    for (unsigned j = 0; j < groups_in_experiment; j++) { 
       ShotGroup g; 
       std::vector<double> r;
       std::vector<double> r2;
-      for (int i = 0; i < shots_in_group; i++) {
-        std::pair<double, double> p;
+      for (unsigned i = 0; i < shots_in_group; i++) {
+        std::complex<double> p;
         if (proportion_of_outliers > 0 && ldexp(pcg32_random_r(&prng), -32) < proportion_of_outliers) {
           p = pull_from_bivariate_normal(&prng, outlier_severity);
         } else {
           p = pull_from_bivariate_normal(&prng);
         }
-        double x = p.first;
-        double y = p.second;
-        double ri = hypot(x, y);
-        g.add(x, y);
+        double ri = std::abs(p);
+        g.add(p);
         r.push_back(ri);
         r2.push_back(ri*ri);
 
@@ -589,7 +779,7 @@ int main(int argc, char* argv[])
       if (shots_in_group == 4) {
         nsd_s.push(g.nsd_kuchnost());
       }
-      double this_minus1 = g.group_size_excluding_worst();
+      double this_minus1 = g.group_size(true);
       gs_s2.push(this_minus1);
       gs2.push(this_minus1);
       gsg_v.push_back(this_gs);
@@ -610,14 +800,6 @@ int main(int argc, char* argv[])
       rayleigh.push(this_rayleigh);
       rayleigh_s.push(this_rayleigh);
       
-      double this_tray = sqrt(accumulate(r2.begin(), r2.end(), 0.) - *std::max_element(r2.begin(), r2.end()));
-      tray.push(this_tray);
-      tray_s.push(this_tray);
-      
-      tmle_s.push(g.trimmed_mle());
-      oqnxy_s.push(g.hypot_qnx_qny());
-      tqnxy_s.push(g.hypot_qnx_qny(true));
-
       double this_mle = sqrt(accumulate(r2.begin(), r2.end(), 0.));
       mle.push(this_mle);
       mle_s.push(mle_factor * this_mle);
@@ -638,8 +820,8 @@ int main(int argc, char* argv[])
         sixtynine.push(this_sixtynine);
         if (shots_in_group <= 100) {
           // Remember all rank pairs, will choose the best one later
-          for (int rank_a = 0; rank_a < shots_in_group - 1; rank_a++) {
-            for (int rank_b = rank_a + 1; rank_b < shots_in_group; rank_b++) {
+          for (unsigned rank_a = 0; rank_a < shots_in_group - 1; rank_a++) {
+            for (unsigned rank_b = rank_a + 1; rank_b < shots_in_group; rank_b++) {
               double e = kth_miss_radius(r, rank_a) + kth_miss_radius(r, rank_b);
               sixtynine_r_s[std::make_pair(rank_a, rank_b)].push(e);
             }
@@ -676,9 +858,6 @@ int main(int argc, char* argv[])
     amr_s.show("Average Miss Radius:");
     std::cout << "--- Robust precision estimators ---\n"; 
     gs_s2.show("Group size (excluding worst shot in group):");
-    tmle_s.show("Trimmed MLE from trimmed mean:");
-    oqnxy_s.show("Original Qn:");
-    tqnxy_s.show("Tweaked Qn:");
     std::cout << "--- Hit probability estimators ---\n"; 
     double theoretical_cep = 0;
     if (proportion_of_outliers == 0) {
@@ -702,7 +881,6 @@ int main(int argc, char* argv[])
     worst_r_s.show("Worst miss radius:", theoretical_worst);
     std::cout << "--- Robust hit probability estimators ---\n"; 
     median_r_s.show("Median CEP estimator:"); // Not showing theoretical_cep because median has known bias
-    tray_s.show("Trimmed MLE from center:");
     double theoretical_second_worst = 0;
     double theoretical_sixtynine = 0;
     if (proportion_of_outliers == 0) {
@@ -723,9 +901,9 @@ int main(int argc, char* argv[])
     std::cout << "--- Combinations of two order statistics ---\n"; 
     // Find combination of two order statistics with lowest CV
     {
-      int best_pos = 0;
+      unsigned best_pos = 0;
       double best_cv = 0;
-      int pos = 0;
+      unsigned pos = 0;
       for (auto it = sixtynine_r_s.begin(); it != sixtynine_r_s.end(); it++, pos++) {
         if (pos == 0 || best_cv > it->second.cv()) {
           best_cv = it->second.cv();
