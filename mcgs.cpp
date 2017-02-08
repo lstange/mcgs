@@ -12,7 +12,6 @@
 #include <cmath>
 #include <numeric>
 #include <complex>
-#include <functional>
 #include <iostream>
 #include <stdlib.h>
 
@@ -92,61 +91,53 @@ class ShotGroup {
       impact_.push_back(p);
     }
     
-    double group_size(bool excluding_worst = false) const
-    {
-      if (impact_.size() < 32) {
-        return group_size_brute_force(excluding_worst); // Faster for small groups
-      } else {
-        return group_size_convex_hull(excluding_worst); // Faster for large groups
-      }
-    }
-
     // Brute force implementation, asymptotic complexity O(N^2)
-    double group_size_brute_force(bool excluding_worst = false) const
+    double group_size_brute_force(double* excluding_worst = NULL) const
     {
       unsigned n = impact_.size();
-      if (excluding_worst && n < 3) {
-        // With two shots, excluding one results in a zero size group
-        return 0;
+      if (excluding_worst) {
+        if (n < 3) {
+          *excluding_worst = 0;
+          return 0;
+        }
       } else if (n < 2) {
         return 0;
       }
       
       // Find the two impacts defining extreme spread
-      double best_so_far = distance(0, 1);
+      double extreme_spread = distance(0, 1);
       unsigned index_a = 0;
       unsigned index_b = 1;
       for (unsigned i = 0; i < n - 1; i++) {
         for (unsigned j = i + 1; j < n; j++) {
           double candidate = distance(i, j);
-          if (best_so_far < candidate) {
-            best_so_far = candidate;
+          if (extreme_spread < candidate) {
+            extreme_spread = candidate;
             index_a = i;
             index_b = j;
           }
         }
       }
       
-      if (!excluding_worst) {
-        return best_so_far;
-      }
-
-      // Worst shot must be one of the impacts defining extreme spread.
-      // Calculate group size without either one, return the smaller number.
-      double best_so_far_excluding_a = 0;
-      double best_so_far_excluding_b = 0;
-      for (unsigned i = 0; i < n - 1; i++) {
-        for (unsigned j = i + 1; j < n; j++) {
-          double candidate = distance(i, j);
-          if (i != index_a && j != index_a && best_so_far_excluding_a < candidate) {
-            best_so_far_excluding_a = candidate;
-          }
-          if (i != index_b && j != index_b && best_so_far_excluding_b < candidate) {
-            best_so_far_excluding_b = candidate;
+      if (excluding_worst) {
+        // Worst shot must be one of the impacts defining extreme spread.
+        // Calculate group size without either one, return the smaller number.
+        double extreme_spread_excluding_a = 0;
+        double extreme_spread_excluding_b = 0;
+        for (unsigned i = 0; i < n - 1; i++) {
+          for (unsigned j = i + 1; j < n; j++) {
+            double candidate = distance(i, j);
+            if (i != index_a && j != index_a && extreme_spread_excluding_a < candidate) {
+              extreme_spread_excluding_a = candidate;
+            }
+            if (i != index_b && j != index_b && extreme_spread_excluding_b < candidate) {
+              extreme_spread_excluding_b = candidate;
+            }
           }
         }
+        *excluding_worst = std::min(extreme_spread_excluding_a, extreme_spread_excluding_b);
       }
-      return std::min(best_so_far_excluding_a, best_so_far_excluding_b);
+      return extreme_spread;
     }
 
     // Same as group_size_brute_force(), but using convex hull.
@@ -157,18 +148,20 @@ class ShotGroup {
     // Pass 1: find extreme spread excluding a
     // Pass 2: find extreme spread excluding b
     //
-    // Return the smaller of a and b
+    // Return the smaller of extreme spread excluding a and extreme spread excluding b
     //
-    double group_size_convex_hull(bool excluding_worst = false) const
+    double group_size_convex_hull(double* excluding_worst = NULL) const
     {
       unsigned n = impact_.size();
-      if (excluding_worst && n < 3) {
-        // With two shots, excluding one results in a zero size group
-        return 0;
+      if (excluding_worst) {
+        if (n < 3) {
+          *excluding_worst = 0;
+          return 0;
+        }
       } else if (n < 2) {
         return 0;
       }
-
+      double extreme_spread = 0;
       ConvexHullPoint a(impact_.at(0)); double extreme_spread_excluding_a = 0;
       ConvexHullPoint b(impact_.at(1)); double extreme_spread_excluding_b = 0;
       for (unsigned pass = 0; pass < 3; pass++) {
@@ -241,6 +234,7 @@ class ShotGroup {
             if (!excluding_worst) {
               return diameter;
             }
+            extreme_spread = diameter;
             break;
           case 1:
             extreme_spread_excluding_a = diameter;
@@ -250,7 +244,8 @@ class ShotGroup {
             break;
         }
       }
-      return std::min(extreme_spread_excluding_a, extreme_spread_excluding_b);
+      *excluding_worst = std::min(extreme_spread_excluding_a, extreme_spread_excluding_b);
+      return extreme_spread;
     }
     
     // As per NSD (page 181) should be within 15 cm at 100 m
@@ -414,17 +409,6 @@ static double median(std::vector<double>& x)
   return (a + b) / 2;  
 }
 
-// Rank is zero-based
-static double kth_miss_radius(std::vector<double>& x, unsigned k)
-{
-  if (k >= x.size()) {
-    return std::numeric_limits<double>::quiet_NaN();
-  }
-  std::vector<double>::iterator it = x.begin() + k; 
-  nth_element(x.begin(), it, x.end());
-  return *it;  
-}
-
 int main(int argc, char* argv[])
 {
 #if 0 // For debugging
@@ -435,8 +419,8 @@ g.add(std::complex<double>(-1.03637, 0.51497));
 g.add(std::complex<double>(1.06082, 1.15651));
 g.add(std::complex<double>(1.26497, -0.395269));
 g.add(std::complex<double>(0.934907, -0.208869));
-    double r = g.group_size_convex_hull(0);
-std::cout << "Expected " << g.group_size_brute_force(0) << ", got " << r << "\n";    
+    double r = g.group_size_convex_hull();
+std::cout << "Expected " << g.group_size_brute_force() << ", got " << r << "\n";    
     return 0;
   }
 #endif
@@ -448,32 +432,40 @@ std::cout << "Expected " << g.group_size_brute_force(0) << ", got " << r << "\n"
     
     // Self-test
     if (experiments == 0) {
-      for (unsigned pass = 0; pass < 2; pass++) {
-        std::cout << "Comparing group_size_brute_force(" << pass << ") and group_size_convex_hull(" << pass << ")\n";
-        {
-          double max_diff = 0;
-          for (unsigned i = 0; i < 1e6; i++) {
-            unsigned shots = pcg32_random_r(&prng) & 0xf;
-            ShotGroup g;
-            for (unsigned j = 0; j < shots; j++) {
-              auto p = pull_from_bivariate_normal(&prng);
-              g.add(p);
-            }
-            double gs = g.group_size_brute_force(pass);
-            double bis = g.group_size_convex_hull(pass);
-            double diff = fabs(bis - gs);
-            if (max_diff < diff) {
-              max_diff = diff;
-            }
-            if (diff > 1e-8) {
-              std::cout << "Expected " << gs << ", got " << bis << "\n";
-              g.show();
-              return 0;
-            }
+      std::cout << "Comparing group_size_brute_force() and group_size_convex_hull()\n";
+      {
+        double max_diff = 0;
+        for (unsigned i = 0; i < 1e6; i++) {
+          unsigned shots = pcg32_random_r(&prng) & 0xf;
+          ShotGroup g;
+          for (unsigned j = 0; j < shots; j++) {
+            auto p = pull_from_bivariate_normal(&prng);
+            g.add(p);
           }
-          std::cout << "Max difference " << max_diff << "\n";
+          double bf2 = 0, ch2 = 0;
+          double bf = g.group_size_brute_force(&bf2);
+          double ch = g.group_size_convex_hull(&ch2);
+          double diff_1 = fabs(bf - ch);
+          if (max_diff < diff_1) {
+            max_diff = diff_1;
+          }
+          if (diff_1 > 1e-8) {
+            std::cout << "Expected group size " << bf << ", got " << ch << "\n";
+            g.show();
+            return 0;
+          }
+          double diff_2 = fabs(bf2 - ch2);
+          if (diff_2 > 1e-8) {
+            std::cout << "Expected group size excluding worst " << bf2 << ", got " << ch2 << "\n";
+            g.show();
+            return 0;
+          }
+          if (max_diff < diff_2) {
+            max_diff = diff_2;
+          }
         }
-      } 
+        std::cout << "Max difference " << max_diff << "\n";
+      }
       std::cout << "\tgroup_size_brute_force()\tgroup_size_convex_hull()\n";
       for (unsigned shots = 4; shots <= 256; shots *= 2) {
         prng = {};
@@ -773,16 +765,20 @@ std::cout << "Expected " << g.group_size_brute_force(0) << ", got " << r << "\n"
           if (ri < r90hat_mle) hits_mle++;
         }
       } // Next shot
+      
+      std::sort(r.begin(), r.end()); // We'll need many ranks, faster to sort once
 
-      double this_gs = g.group_size();
+      double this_minus1 = 0;
+      double this_gs = (shots_in_group < 32) 
+                     ? g.group_size_brute_force(&this_minus1) 
+                     : g.group_size_convex_hull(&this_minus1);
       gs_s.push(this_gs);
+      gsg_v.push_back(this_gs);
+      gs_s2.push(this_minus1);
+      gs2.push(this_minus1);
       if (shots_in_group == 4) {
         nsd_s.push(g.nsd_kuchnost());
       }
-      double this_minus1 = g.group_size(true);
-      gs_s2.push(this_minus1);
-      gs2.push(this_minus1);
-      gsg_v.push_back(this_gs);
       if (j) {
         if (best_gs > this_gs) {
           best_gs = this_gs;
@@ -804,11 +800,11 @@ std::cout << "Expected " << g.group_size_brute_force(0) << ", got " << r << "\n"
       mle.push(this_mle);
       mle_s.push(mle_factor * this_mle);
       
-      double this_wr = kth_miss_radius(r, shots_in_group - 1);
+      double this_wr = r.at(shots_in_group - 1);
       wr.push(this_wr);
       worst_r_s.push(this_wr);
       
-      double this_swr = kth_miss_radius(r, shots_in_group - 2);
+      double this_swr = r.at(shots_in_group - 2);
       swr.push(this_swr);
       second_worst_r_s.push(this_swr);
             
@@ -816,13 +812,13 @@ std::cout << "Expected " << g.group_size_brute_force(0) << ", got " << r << "\n"
       median_r_s.push(med);
       
       if (sixtynine_rank.first != sixtynine_rank.second) {
-        double this_sixtynine = kth_miss_radius(r, sixtynine_rank.first) + kth_miss_radius(r, sixtynine_rank.second);
+        double this_sixtynine = r.at(sixtynine_rank.first) + r.at(sixtynine_rank.second);
         sixtynine.push(this_sixtynine);
         if (shots_in_group <= 100) {
           // Remember all rank pairs, will choose the best one later
           for (unsigned rank_a = 0; rank_a < shots_in_group - 1; rank_a++) {
             for (unsigned rank_b = rank_a + 1; rank_b < shots_in_group; rank_b++) {
-              double e = kth_miss_radius(r, rank_a) + kth_miss_radius(r, rank_b);
+              double e = r.at(rank_a) + r.at(rank_b);
               sixtynine_r_s[std::make_pair(rank_a, rank_b)].push(e);
             }
           }
