@@ -4,7 +4,7 @@
 
   Building:
   
-  g++ -O3 -Wall -std=c++11 -o mcgs mcgs.cpp
+  g++ -O3 -Wall -std=c++11 -march=native -g -o mcgs mcgs.cpp
 
 */
 #include <vector>
@@ -12,24 +12,266 @@
 #include <cmath>
 #include <numeric>
 #include <complex>
+#include <random>
 #include <iostream>
+#include <memory>
 #include <stdlib.h>
 
-// *Really* minimal PCG32 code / (c) 2014 M.E. O'Neill / pcg-random.org
-// Licensed under Apache License 2.0 (NO WARRANTY, etc. see website)
+// Abstract base class (interface) for random shot group generator, implementations follow
+class RandomNumberGenerator {
+  public:
+    virtual void advance() = 0;
+    virtual void reset() = 0;
+    virtual std::complex<double> point(unsigned dimension) = 0;
+};
 
-typedef struct { uint64_t state;  uint64_t inc; } pcg32_random_t;
+//
+// Baseline pseudorandom number generator, wraps the default provided by standard library
+//
+class DefaultRandomNumberGenerator : public RandomNumberGenerator {
+    std::default_random_engine gen_;
+    std::normal_distribution<double> dist_;
+  
+  public:
+    DefaultRandomNumberGenerator() 
+    {
+      reset();
+    }
+  
+    void advance() {}
 
-uint32_t pcg32_random_r(pcg32_random_t* rng)
-{
-  uint64_t oldstate = rng->state;
-  // Advance internal state
-  rng->state = oldstate * 6364136223846793005ULL + (rng->inc|1);
-  // Calculate output function (XSH RR), uses old state for max ILP
-  uint32_t xorshifted = ((oldstate >> 18u) ^ oldstate) >> 27u;
-  uint32_t rot = oldstate >> 59u;
-  return (xorshifted >> rot) | (xorshifted << ((-rot) & 31));
-}
+    void reset() 
+    {
+      gen_.seed(42);
+    }
+
+    std::complex<double> point(unsigned dimension)
+    {
+      return std::complex<double>(dist_(gen_), dist_(gen_));
+    }
+};
+
+// 
+// Additive quasi-random generator
+//
+// To get the next point, add a fixed step modulo 1 to the previous point. 
+// Use square roots of prime numbers as steps because they are irrational.
+//
+class AdditiveRandomNumberGenerator: public RandomNumberGenerator {
+    std::vector<double> x_;
+    std::vector<double> step_;
+
+  public:
+    AdditiveRandomNumberGenerator(unsigned dimensions)
+    {
+      unsigned nprimes = dimensions * 2; // Two coordinates for each point
+      x_.resize(nprimes);
+      step_.resize(nprimes);
+      //
+      // To initialize the steps, we need to find some prime numbers. Do that with 
+      // sieve of Eratosthenes.
+      //
+      // To estimate how big the sieve should be to get nprimes primes, start with 
+      // approximation by Gauss and Legendre:
+      //
+      //   nprimes = PrimePi(x) ~ x/log(x)
+      //
+      // Here PrimePi(x) is prime-counting function: number of prime numbers that are 
+      // less than or equal to x. This is a lower bound for all but the lowest values
+      // of x (which we'll handle separately), so x will be slightly larger than strictly 
+      // necessary.
+      //
+      // To solve for x without resorting to Lambert-W function, rewrite as follows:
+      //
+      //   x ~ nprimes * log(x)
+      //
+      // Now use fixed point iteration to find x. Stop iterating when the whole part
+      // of x stops changing.
+      // 
+      unsigned sieve_size = 0;
+      if (nprimes < 5) {  // Approximation breaks below 5, floor sieve_size
+        sieve_size = 7;
+      } else {
+        double x = nprimes;
+        for (unsigned i = 0; i < 30; i++) {
+          unsigned before = (unsigned)ceil(x);
+          x = nprimes * log(x); // Fixed point iteration
+          unsigned after = (unsigned)ceil(x);
+          if (before == after) {
+            sieve_size = before;
+            break;
+          }      
+        }
+        if (sieve_size == 0) {
+          std::cerr << "Fixed point iteration failed to converge\n";
+          exit(-1);
+        }
+      }
+    
+      // The sieve itself
+      std::vector<bool> prime(sieve_size + 1, true);
+      unsigned top = sqrt(sieve_size);
+      for (unsigned i = 2; i < top; i++) {
+        if (prime.at(i)) {
+          for(unsigned j = i * i; j <= sieve_size; j += i) {
+            prime.at(j) = false;
+          }
+        }
+      }
+    
+      // Collect prime numbers left in the sieve, take square roots, assign to steps.
+      unsigned index = 0;
+      for (unsigned j = 2; index < nprimes; j++) {
+        if (j >= sieve_size) {
+          std::cerr << "Ran out of primes\n"; // Shouldn't happen if we did the math right
+          exit(-1);
+        }
+        if (prime[j]) {
+          step_.at(index++) = sqrt(j);
+        }
+      }
+    }
+  
+    void advance()
+    {
+      for (unsigned j = 0; j < step_.size(); j++) {
+        double int_part;
+        x_.at(j) = modf(x_.at(j) + step_.at(j), &int_part);
+      }
+    }
+
+    void reset()
+    {
+      for (unsigned j = 0; j < step_.size(); j++) {
+        x_.at(j) = 0;
+      }
+    }
+
+    std::complex<double> point(unsigned dimension)
+    {
+      double x, y;
+      if (dimension >= step_.size() / 2) {
+        x = y = std::numeric_limits<double>::quiet_NaN();
+      } else {
+        double u = x_.at(dimension);
+        double v = x_.at(dimension + step_.size() / 2);
+        // Box-Muller transform
+        double r = sqrt(-2 * log(u));
+        x = r * cos(2 * M_PI * v);
+        y = r * sin(2 * M_PI * v);
+      }
+      return std::complex<double>(x, y);
+    }
+};
+
+//
+// Sobol quasi-random number generator
+//
+class SobolRandomNumberGenerator : public RandomNumberGenerator {
+    unsigned x_[20];
+    unsigned v_[20][32 + 1];
+    unsigned i_;
+  
+public:
+    SobolRandomNumberGenerator(unsigned dimensions): i_(0)
+    {
+      // Primitive polynomials and initial direction numbers for the first 20 dimensions
+      // recommended by Stephen Joe and Frances Kuo in new-joe-kuo-6.21201
+      // http://web.maths.unsw.edu.au/~fkuo/sobol/index.html
+      const unsigned s[20] = {1, 2, 3, 3, 4, 4, 5, 5, 5,  5,  5, 5,  6,  6,  6,  6,  6,  6, 7, 7};
+      const unsigned a[20] = {0, 1, 1, 2, 1, 4, 2, 4, 7, 11, 13, 14, 1, 13, 16, 19, 22, 25, 1, 4};
+      const unsigned m[20][7] = {
+        {1, 0, 0,  0,  0,  0,   0},
+        {1, 3, 0,  0,  0,  0,   0},
+        {1, 3, 1,  0,  0,  0,   0},
+        {1, 1, 1,  0,  0,  0,   0},
+        {1, 1, 3,  3,  0,  0,   0},
+        {1, 3, 5, 13,  0,  0,   0},
+        {1, 1, 5,  5, 17,  0,   0},
+        {1, 1, 5,  5,  5,  0,   0},
+        {1, 1, 7, 11, 19,  0,   0}, 
+        {1, 1, 5,  1,  1,  0,   0},
+        {1, 1, 1,  3, 11,  0,   0}, 
+        {1, 3, 5,  5, 31,  0,   0}, 
+        {1, 3, 3,  9,  7, 49,   0}, 
+        {1, 1, 1, 15, 21, 21,   0}, 
+        {1, 3, 1, 13, 27, 49,   0}, 
+        {1, 1, 1, 15,  7,  5,   0}, 
+        {1, 3, 1, 15, 13, 25,   0}, 
+        {1, 1, 5,  5, 19, 61,   0}, 
+        {1, 3, 7, 11, 23, 15, 103}, 
+        {1, 3, 7, 13, 13, 15,  69} 
+      };
+      if (dimensions > 10) {
+        std::cerr << "Sobol direction numbers available for at most 10 shot group\n";
+        exit(-1);
+      }
+      for (unsigned j = 0; j < 20; j++) {
+        if (j == 0) {
+          for (unsigned i = 0; i < 32; i++) {
+            v_[j][i] = 1 << (32 - i - 1);
+          }
+        } else {
+          unsigned ss = s[j - 1];
+          for (unsigned i = 0; i < ss; i++) {
+            v_[j][i] = m[j - 1][i] << (32 - i - 1);
+          }
+          for (unsigned i = ss; i < 32; i++) {
+	        v_[j][i] = v_[j][i - ss] ^ (v_[j][i - ss] >> ss); 
+	        for (unsigned k = 1; k < ss; k++) { 
+	          v_[j][i] ^= (((a[j - 1] >> (ss - 1 - k)) & 1) * v_[j][i - k]);
+	        } 
+          }
+        }
+        x_[j] = 0;
+      }
+      
+      // Burn-in: discard initial values
+      for (unsigned i = 0; i < 32; i++) {
+        advance();
+      }
+    }
+    
+    void reset()
+    {
+      for (unsigned j = 0; j < 20; j++) {
+        x_[j] = 0;
+      }
+    }
+
+    void advance()
+    {
+      unsigned b = i_++;
+      unsigned z = 0; // Position of the first zero bit in binary representation of i_
+                      // counting from the right
+      if (b) {
+        while (b & 1) {
+          b >>= 1;
+          z++;
+        }
+      }
+      for (unsigned j = 0; j < 20; j++) {
+        x_[j] ^= v_[j][z];
+      }
+    }
+    
+    std::complex<double> point(unsigned dimension)
+    {
+      double x, y;
+      if (dimension >= 10) {
+        x = y = std::numeric_limits<double>::quiet_NaN();
+      } else {
+        double u = ldexp(x_[dimension], -32);
+        double v = ldexp(x_[dimension + 10], -32);
+
+        // Box-Muller transform
+        double r = sqrt(-2 * log(u));
+        x = r * cos(2 * M_PI * v);
+        y = r * sin(2 * M_PI * v);
+      }
+      return std::complex<double>(x, y);
+    }
+};
 
 struct ConvexHullPoint {
 public:  
@@ -95,19 +337,17 @@ class ShotGroup {
     double group_size_brute_force(double* excluding_worst = NULL) const
     {
       unsigned n = impact_.size();
-      if (excluding_worst) {
-        if (n < 3) {
+      if (n < 2) {
+        if (excluding_worst) {
           *excluding_worst = 0;
-          return 0;
         }
-      } else if (n < 2) {
         return 0;
       }
       
       // Find the two impacts defining extreme spread
-      double extreme_spread = distance(0, 1);
+      double extreme_spread = 0;
       unsigned index_a = 0;
-      unsigned index_b = 1;
+      unsigned index_b = 0;
       for (unsigned i = 0; i < n - 1; i++) {
         for (unsigned j = i + 1; j < n; j++) {
           double candidate = distance(i, j);
@@ -153,12 +393,10 @@ class ShotGroup {
     double group_size_convex_hull(double* excluding_worst = NULL) const
     {
       unsigned n = impact_.size();
-      if (excluding_worst) {
-        if (n < 3) {
+      if (n < 2) {
+        if (excluding_worst) {
           *excluding_worst = 0;
-          return 0;
         }
-      } else if (n < 2) {
         return 0;
       }
       double extreme_spread = 0;
@@ -231,11 +469,11 @@ class ShotGroup {
         }
         switch (pass) {
           case 0:
-            if (!excluding_worst) {
-              return diameter;
+            if (excluding_worst) {
+              extreme_spread = diameter;
+              break;
             }
-            extreme_spread = diameter;
-            break;
+            return diameter;
           case 1:
             extreme_spread_excluding_a = diameter;
             break;
@@ -315,7 +553,8 @@ class ShotGroup {
       return amr;
     }
 
-    void show(void) const {
+    void show(void) const
+    {
       for (unsigned i = 0; i < impact_.size(); i++) {
         std::cout << "g.add(std::complex<double>(" << impact_.at(i).real() << ", " << impact_.at(i).imag() << "));\n";
       }
@@ -379,19 +618,6 @@ class DescriptiveStat
     double s_;
 };
 
-static std::complex<double> pull_from_bivariate_normal(pcg32_random_t* prng, double deviation = 1.)
-{
-  double u; do { u = ldexp(pcg32_random_r(prng), -32); } while (!u);
-  double v = ldexp(pcg32_random_r(prng), -32);
-
-  // Box-Muller transform
-  double r = deviation * sqrt(-2 * log(u));
-  double x = r * cos(2 * M_PI * v);
-  double y = r * sin(2 * M_PI * v);
-
-  return std::complex<double>(x, y);
-}
-
 static double median(std::vector<double>& x)
 {
   if (x.size() == 0) {
@@ -411,22 +637,8 @@ static double median(std::vector<double>& x)
 
 int main(int argc, char* argv[])
 {
-#if 0 // For debugging
-  {
-    ShotGroup g; 
-g.add(std::complex<double>(1.35132, 0.870415));
-g.add(std::complex<double>(-1.03637, 0.51497));
-g.add(std::complex<double>(1.06082, 1.15651));
-g.add(std::complex<double>(1.26497, -0.395269));
-g.add(std::complex<double>(0.934907, -0.208869));
-    double r = g.group_size_convex_hull();
-std::cout << "Expected " << g.group_size_brute_force() << ", got " << r << "\n";    
-    return 0;
-  }
-#endif
-
-  pcg32_random_t prng = {0};
-  unsigned experiments = 0;
+  DefaultRandomNumberGenerator pseudo_rng;
+  long long experiments = 0;
   if (argc > 1) {
     experiments = atoi(argv[1]);
     
@@ -436,15 +648,15 @@ std::cout << "Expected " << g.group_size_brute_force() << ", got " << r << "\n";
       {
         double max_diff = 0;
         for (unsigned i = 0; i < 1e6; i++) {
-          unsigned shots = pcg32_random_r(&prng) & 0xf;
+          unsigned shots = (i & 0xf) + 2;
           ShotGroup g;
+          pseudo_rng.advance();
           for (unsigned j = 0; j < shots; j++) {
-            auto p = pull_from_bivariate_normal(&prng);
-            g.add(p);
+            g.add(pseudo_rng.point(j));
           }
           double bf2 = 0, ch2 = 0;
-          double bf = g.group_size_brute_force(&bf2);
-          double ch = g.group_size_convex_hull(&ch2);
+          double bf = g.group_size_brute_force((i & 0x10) ? &bf2 : NULL);
+          double ch = g.group_size_convex_hull((i & 0x10) ? &ch2 : NULL);
           double diff_1 = fabs(bf - ch);
           if (max_diff < diff_1) {
             max_diff = diff_1;
@@ -454,30 +666,32 @@ std::cout << "Expected " << g.group_size_brute_force() << ", got " << r << "\n";
             g.show();
             return 0;
           }
-          double diff_2 = fabs(bf2 - ch2);
-          if (diff_2 > 1e-8) {
-            std::cout << "Expected group size excluding worst " << bf2 << ", got " << ch2 << "\n";
-            g.show();
-            return 0;
-          }
-          if (max_diff < diff_2) {
-            max_diff = diff_2;
+          if (i & 0x10) {
+            double diff_2 = fabs(bf2 - ch2);
+            if (diff_2 > 1e-8) {
+              std::cout << "Expected group size excluding worst " << bf2 << ", got " << ch2 << "\n";
+              g.show();
+              return 0;
+            }
+            if (max_diff < diff_2) {
+              max_diff = diff_2;
+            }
           }
         }
         std::cout << "Max difference " << max_diff << "\n";
       }
       std::cout << "\tgroup_size_brute_force()\tgroup_size_convex_hull()\n";
       for (unsigned shots = 4; shots <= 256; shots *= 2) {
-        prng = {};
         std::cout << shots << " shots:\t";
+        pseudo_rng.reset();
         time_t start_time;
         time(&start_time);
         double a = 0;
         for (unsigned i = 0; i < 1e6; i++) {
           ShotGroup g;
+          pseudo_rng.advance();
           for (unsigned j = 0; j < shots; j++) {
-            auto p = pull_from_bivariate_normal(&prng);
-            g.add(p);
+            g.add(pseudo_rng.point(j));
           }
           a += g.group_size_brute_force();
         }
@@ -485,15 +699,15 @@ std::cout << "Expected " << g.group_size_brute_force() << ", got " << r << "\n";
         time(&end_time);
         std::cout << (end_time - start_time) << " µs, sum=" << a;
 
-        prng = {};
+        pseudo_rng.reset();
         std::cout << "\t";
         time(&start_time);
         double b = 0;
         for (unsigned i = 0; i < 1e6; i++) {
           ShotGroup g;
+          pseudo_rng.advance();
           for (unsigned j = 0; j < shots; j++) {
-            auto p = pull_from_bivariate_normal(&prng);
-            g.add(p);
+            g.add(pseudo_rng.point(j));
           }
           b += g.group_size_convex_hull();
         }
@@ -503,12 +717,26 @@ std::cout << "Expected " << g.group_size_brute_force() << ", got " << r << "\n";
       return 0;
     }
   } else {
-    std::cerr << "Usage: mcgs experiments [[[[shots_in_group] groups_in_experiment] proportion_of_outliers] outlier_severity]\n";
+    std::cerr << "Usage: mcgs experiments [[[[shots_in_group] groups_in_experiment] proportion_of_outliers] outlier_severity]\n"
+                 "0 experiments to run a self-test,\n"
+                 "negative experiments to use additive quasi-random number generator,\n"
+                 "negative shots_in_group to use Sobol quasi-random number generator\n";
     return -1;
   }
-  unsigned shots_in_group = 5;
+  int shots_in_group = 5;
   if (argc > 2) {
     shots_in_group = atoi(argv[2]);
+  }
+  std::unique_ptr<RandomNumberGenerator> rng(std::unique_ptr<RandomNumberGenerator>(new DefaultRandomNumberGenerator()));
+  if (shots_in_group < 0) {
+    shots_in_group = -shots_in_group;
+    std::cout << "Using Sobol quasi-random number generator for impact coordinates\n";
+    rng = std::unique_ptr<RandomNumberGenerator>(new SobolRandomNumberGenerator(shots_in_group));
+  }
+  if (experiments < 0) {
+    experiments = -experiments;
+    std::cout << "Using additive quasi-random number generator for impact coordinates\n";
+    rng = std::unique_ptr<RandomNumberGenerator>(new AdditiveRandomNumberGenerator(shots_in_group));
   }
   unsigned groups_in_experiment = 1;
   if (argc > 3) {
@@ -734,20 +962,23 @@ std::cout << "Expected " << g.group_size_brute_force() << ", got " << r << "\n";
   double r90hat_sixtynine = 0;
   double r90hat_rayleigh = 0;
   double r90hat_mle = 0;
+  std::default_random_engine outlier_generator;
+  std::uniform_real_distribution<double> outlier_distribution;
   for (unsigned experiment = 0; experiment < experiments; experiment++) {
     double best_gs = 0;
     DescriptiveStat gs, gs2, amr, wr, swr, sixtynine, rayleigh, mle;
     std::vector<double> gsg_v;
     for (unsigned j = 0; j < groups_in_experiment; j++) { 
       ShotGroup g; 
+      rng->advance();
       std::vector<double> r;
       std::vector<double> r2;
       for (unsigned i = 0; i < shots_in_group; i++) {
-        std::complex<double> p;
-        if (proportion_of_outliers > 0 && ldexp(pcg32_random_r(&prng), -32) < proportion_of_outliers) {
-          p = pull_from_bivariate_normal(&prng, outlier_severity);
-        } else {
-          p = pull_from_bivariate_normal(&prng);
+        std::complex<double> p = rng->point(i);
+        if ( proportion_of_outliers > 0 
+          && outlier_distribution(outlier_generator) < proportion_of_outliers
+           ) {
+          p *= outlier_severity;
         }
         double ri = std::abs(p);
         g.add(p);
@@ -765,7 +996,7 @@ std::cout << "Expected " << g.group_size_brute_force() << ", got " << r << "\n";
           if (ri < r90hat_mle) hits_mle++;
         }
       } // Next shot
-      
+
       std::sort(r.begin(), r.end()); // We'll need many ranks, faster to sort once
 
       double this_minus1 = 0;
