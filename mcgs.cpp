@@ -4,7 +4,7 @@
 
   Building:
   
-  g++ -O3 -Wall -std=c++11 -march=native -g -o mcgs mcgs.cpp
+  g++ -O3 -Wall -Wextra -std=c++11 -march=native -g -o mcgs mcgs.cpp
 
 */
 #include <vector>
@@ -16,6 +16,7 @@
 #include <iostream>
 #include <memory>
 #include <stdlib.h>
+#include <algorithm>
 
 // Abstract base class (interface) for random shot group generator, implementations follow
 class RandomNumberGenerator {
@@ -45,7 +46,7 @@ class DefaultRandomNumberGenerator : public RandomNumberGenerator {
       gen_.seed(42);
     }
 
-    std::complex<double> point(unsigned dimension)
+    std::complex<double> point(unsigned dimension __attribute__((unused)))
     {
       return std::complex<double>(dist_(gen_), dist_(gen_));
     }
@@ -564,19 +565,14 @@ class ShotGroup {
 class DescriptiveStat
 {
   public:
-    DescriptiveStat() : n_(0) {}
+    DescriptiveStat() : n_(0), m_(0) {}
     
     void push(double x)
     {
-      if (!n_++) {
-        m_ = x;
-        s_ = 0;
-      } else {
-        double new_m = m_ + (x - m_) / n_;
-        double new_s = s_ + (x - m_) * (x - new_m);
-        m_ = new_m;
-        s_ = new_s;
-      }
+      double new_m = m_ + (x - m_) / (++n_);
+      double new_s = s_ + (x - m_) * (x - new_m);
+      m_ = new_m;
+      s_ = new_s;
     }
 
     double mean(void) const
@@ -723,15 +719,20 @@ int main(int argc, char* argv[])
                  "negative shots_in_group to use Sobol quasi-random number generator\n";
     return -1;
   }
-  int shots_in_group = 5;
-  if (argc > 2) {
-    shots_in_group = atoi(argv[2]);
-  }
   std::unique_ptr<RandomNumberGenerator> rng(std::unique_ptr<RandomNumberGenerator>(new DefaultRandomNumberGenerator()));
-  if (shots_in_group < 0) {
-    shots_in_group = -shots_in_group;
-    std::cout << "Using Sobol quasi-random number generator for impact coordinates\n";
-    rng = std::unique_ptr<RandomNumberGenerator>(new SobolRandomNumberGenerator(shots_in_group));
+  unsigned shots_in_group;
+  {
+    int isig = 5;
+    if (argc > 2) {
+      isig = atoi(argv[2]);
+    }
+    if (isig < 0) {
+      shots_in_group = (unsigned)(-isig);
+      std::cout << "Using Sobol quasi-random number generator for impact coordinates\n";
+      rng = std::unique_ptr<RandomNumberGenerator>(new SobolRandomNumberGenerator(shots_in_group));
+    } else {
+      shots_in_group = (unsigned)(isig);
+    }
   }
   if (experiments < 0) {
     experiments = -experiments;
