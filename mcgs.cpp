@@ -63,7 +63,7 @@ class AdditiveRandomNumberGenerator: public RandomNumberGenerator {
     std::vector<double> step_;
 
   public:
-    AdditiveRandomNumberGenerator(unsigned dimensions)
+    explicit AdditiveRandomNumberGenerator(unsigned dimensions)
     {
       unsigned nprimes = dimensions * 2; // Two coordinates for each point
       x_.resize(nprimes);
@@ -174,7 +174,7 @@ class SobolRandomNumberGenerator : public RandomNumberGenerator {
     unsigned i_;
   
 public:
-    SobolRandomNumberGenerator(unsigned dimensions): i_(0)
+    explicit SobolRandomNumberGenerator(unsigned dimensions): i_(0)
     {
       // Primitive polynomials and initial direction numbers for the first 20 dimensions
       // recommended by Stephen Joe and Frances Kuo in new-joe-kuo-6.21201
@@ -275,37 +275,37 @@ public:
 };
 
 struct ConvexHullPoint {
-public:  
-  ConvexHullPoint(const std::complex<double>& p) : point_(p) {}
+  public:  
+    explicit ConvexHullPoint(const std::complex<double>& p) : point_(p) {}
   
-  // For lexicographic sort: first by x, then by y
-  bool operator<(const ConvexHullPoint& other) const
-  {
-    if (point_.real() < other.point_.real()) {
-      return true;
-    } else if (point_.real() > other.point_.real()) {
-      return false;
-    } else {
-      return point_.imag() < other.point_.imag();
+    // For lexicographic sort: first by x, then by y
+    bool operator<(const ConvexHullPoint& other) const
+    {
+      if (point_.real() < other.point_.real()) {
+        return true;
+      } else if (point_.real() > other.point_.real()) {
+        return false;
+      } else {
+        return point_.imag() < other.point_.imag();
+      }
     }
-  }
 
-  bool operator!=(const std::complex<double>& other) const
-  {
-    return point_ != other;
-  }
+    bool operator!=(const std::complex<double>& other) const
+    {
+      return point_ != other;
+    }
   
-  // Distance to another point
-  double distanceTo(const ConvexHullPoint& other) const
-  {
-    return std::abs(point_ - other.point_);
-  }
+    // Distance to another point
+    double distanceTo(const ConvexHullPoint& other) const
+    {
+      return std::abs(point_ - other.point_);
+    }
 
-  double inline x(void) const { return point_.real(); }
-  double inline y(void) const { return point_.imag(); }
+    double inline x(void) const { return point_.real(); }
+    double inline y(void) const { return point_.imag(); }
 
-private:
-  std::complex<double> point_;
+  private:
+    std::complex<double> point_;
 };
 
 class ShotGroup {
@@ -415,7 +415,7 @@ class ShotGroup {
               || ((pass == 1) && (a != impact_.at(i)))
               || ((pass == 2) && (b != impact_.at(i)))
                )
-            p.push_back(impact_.at(i));
+            p.push_back(ConvexHullPoint(impact_.at(i)));
           }
           std::sort(p.begin(), p.end());
       
@@ -565,7 +565,7 @@ class ShotGroup {
 class DescriptiveStat
 {
   public:
-    DescriptiveStat() : n_(0), m_(0) {}
+    DescriptiveStat() : n_(0), m_(0), s_(0) {}
     
     void push(double x)
     {
@@ -593,11 +593,6 @@ class DescriptiveStat
     double cv(void) const
     {
       return stdev() / mean();
-    }
-
-    unsigned count(void) const
-    {
-      return n_;
     }
 
     void show(const char* metric, double theoretical = 0) {
