@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Group Size Calculator</title>
+</head>
+<body>
+
+<script>
+function recalculate(backward)
+{
+  var hits = document.getElementById("hits").value; 
+  var shots = document.getElementById("shots").value; 
+  var diameter = document.getElementById("diameter").value;
+  var diameter_unit = document.getElementById("diameter_unit").value;
+  var range = document.getElementById("range").value;
+  var range_unit = document.getElementById("range_unit").value;
+
+  var coeff = document.getElementById("coeff").value;
+  var spread = document.getElementById("spread").value;
+  var spread_unit = document.getElementById("spread_unit").value;
+  var distance = document.getElementById("distance").value;
+  var distance_unit = document.getElementById("distance_unit").value;
+
+  if (backward) {
+    var spread = coeff * diameter * diameter_unit * distance 
+               / (spread_unit * range * 2 * Math.sqrt(2 * Math.log((shots + 2)/(shots - hits + 1))));
+    document.getElementById("spread").value = spread.toPrecision(3);
+  } else {
+    var diameter = spread * spread_unit * range * 2 * Math.sqrt(2 * Math.log((shots + 2)/(shots - hits + 1))) 
+                 / (coeff * diameter_unit * distance);
+    document.getElementById("diameter").value = diameter.toPrecision(3);
+  }
+}
+</script>
+<form>
+<p>Assuming perfect zero, 
+<p><input type="number" id="hits" min="1" max="100" value="43" onChange="recalculate(true)"> 
+of 
+<input type="number" id="shots" min="1" max="100" value="60" onChange="recalculate(true)">
+shots in 
+<input type="option" id="diameter" value="55.6" onChange="recalculate(true)">
+<select id="diameter_unit" onChange="recalculate(true)">
+  <option value="0.001" selected>mm</option>
+  <option value="0.0254">inch</option>
+</select>
+diameter circle at 
+<select id="range" onChange="recalculate(true)">
+  <option value="7">7</option>
+  <option value="10">10</option>
+  <option value="25">25</option>
+  <option value="50" selected>50</option>
+  <option value="100">100</option>
+</select>
+<select id="range_unit" onChange="recalculate(true)">
+  <option value="0.3048">feet</option>
+  <option value="0.9144">yards</option>
+  <option value="1" selected>m</option>
+</select>
+<p>correspond to
+<p><input id="spread" value="0.93" onChange="recalculate(false)">
+<select id="spread_unit">
+  <option value="0.001">mm</option>
+  <option value="0.0254" selected>inch</option>
+</select>
+<!-- Output of es.cpp -->
+<select id="coeff" onChange="recalculate(false)">
+  <option value="2.409">3</option>
+  <option value="2.793">4</option>
+  <option value="3.066" selected>5</option>
+  <option value="3.275">6</option>
+  <option value="3.444">7</option>
+  <option value="3.585">8</option>
+  <option value="3.706">9</option>
+  <option value="3.812">10</option>
+</select>
+shot average group size at
+<select id="distance" onChange="recalculate(false)">
+  <option value="7">7</option>
+  <option value="10">10</option>
+  <option value="25" selected>25</option>
+  <option value="50">50</option>
+  <option value="100">100</option>
+</select>
+<select id="distance_unit" onChange="recalculate(false)">
+  <option value="0.3048">feet</option>
+  <option value="0.9144">yards</option>
+  <option value="1" selected>m</option>
+</select>.
+</form>
+</body>
+</html>
