@@ -13,7 +13,7 @@ Here are some group sizes pulled from our reference distribution:
 |                    | Mean |  CV  |
 | ------------------ | ----:|-----:|
 | 3 shot group size  | 2.41 | 0.37 |
-| 5 shot group size  | 3.06 | 0.27 |
+| 5 shot group size  | 3.07 | 0.27 |
 | 10 shot group size | 3.81 | 0.19 |
 
 CV is [coefficient of variation](http://en.wikipedia.org/wiki/Coefficient_of_variation): the ratio of standard deviation to mean. It can be thought of as *noise to signal ratio*. As you can see there's quite a bit of noise, meaning that one group does not let us measure precision well.
@@ -193,6 +193,11 @@ To compare with regular group size:
 
   + After excluding worst shot in a 5 shot group, multiply the result by 1.45 to get regular five-shot group size 
   + Group size after excluding the worst shot in a 10-shot group is approximately the same as regular five-shot group size
+
+### Other Pages Here
+
+  + [Simulation results](http://lstange.github.io/mcgs/index.html)
+  + [Group size calculator](http://lstange.github.io/mcgs/calculator.html)
 
 ### tl,dr: Rules of Thumb
 
