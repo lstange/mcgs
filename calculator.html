@@ -40,22 +40,22 @@
         var r90 = diameter * diameter_unit * distance9 * distance9_unit
           / (r90_unit * range * 2 * Math.sqrt(Math.log((shots + 2.) / (shots - hits + 1.)) / Math.log(10)));
         var d90 = 2 * r90;
-        document.getElementById("spread").value = spread.toPrecision(4);
-        document.getElementById("spread2").value = spread2.toPrecision(4);
-        document.getElementById("r90").value = r90.toPrecision(4);
-        document.getElementById("d90").value = d90.toPrecision(4);
+        document.getElementById("spread").value = parseFloat(spread.toPrecision(4));
+        document.getElementById("spread2").value = parseFloat(spread2.toPrecision(4));
+        document.getElementById("r90").value = parseFloat(r90.toPrecision(4));
+        document.getElementById("d90").value = parseFloat(d90.toPrecision(4));
       } else {
         var diameter = spread * spread_unit * range * 2 * Math.sqrt(2 * Math.log((shots + 2) / (shots - hits + 1)))
           / (coeff * diameter_unit * distance * distance_unit);
         var spread2 = spread * coeff2 * spread_unit * distance2 * distance2_unit
           / (coeff * spread2_unit * distance * distance_unit);
-        var r90 = spread * spread_unit * distance9 * Math.sqrt(2 * Math.log(10))
-          / (coeff * r90_unit * distance);
+        var r90 = spread * spread_unit * distance9 * distance9_unit * Math.sqrt(2 * Math.log(10))
+          / (coeff * r90_unit * distance * distance_unit);
         var d90 = 2 * r90;
-        document.getElementById("diameter").value = diameter.toPrecision(4);
-        document.getElementById("spread2").value = spread2.toPrecision(4);
-        document.getElementById("r90").value = r90.toPrecision(4);
-        document.getElementById("d90").value = d90.toPrecision(4);
+        document.getElementById("diameter").value = parseFloat(diameter.toPrecision(4));
+        document.getElementById("spread2").value = parseFloat(spread2.toPrecision(4));
+        document.getElementById("r90").value = parseFloat(r90.toPrecision(4));
+        document.getElementById("d90").value = parseFloat(d90.toPrecision(4));
       }
       return false;
     }
