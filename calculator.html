@@ -33,19 +33,20 @@
       var distance9_unit = parseFloat(document.getElementById("distance9_unit").value);
 
       if (forward) {
+        // Use additive (Laplace) smoothing - add one hit and one miss
         var spread = coeff * diameter * diameter_unit * distance * distance_unit
-          / (spread_unit * range * 2 * Math.sqrt(2 * Math.log((shots + 2.) / (shots - hits + 1.))));
+          / (spread_unit * range * range_unit * 2 * Math.sqrt(2 * Math.log((shots + 2.) / (shots - hits + 1.))));
         var spread2 = coeff2 * diameter * diameter_unit * distance2 * distance2_unit
-          / (spread2_unit * range * 2 * Math.sqrt(2 * Math.log((shots + 2.) / (shots - hits + 1.))));
+          / (spread2_unit * range * range_unit * 2 * Math.sqrt(2 * Math.log((shots + 2.) / (shots - hits + 1.))));
         var r90 = diameter * diameter_unit * distance9 * distance9_unit
-          / (r90_unit * range * 2 * Math.sqrt(Math.log((shots + 2.) / (shots - hits + 1.)) / Math.log(10)));
+          / (r90_unit * range * range_unit * 2 * Math.sqrt(Math.log((shots + 2.) / (shots - hits + 1.)) / Math.log(10)));
         var d90 = 2 * r90;
         document.getElementById("spread").value = parseFloat(spread.toPrecision(4));
         document.getElementById("spread2").value = parseFloat(spread2.toPrecision(4));
         document.getElementById("r90").value = parseFloat(r90.toPrecision(4));
         document.getElementById("d90").value = parseFloat(d90.toPrecision(4));
       } else {
-        var diameter = spread * spread_unit * range * 2 * Math.sqrt(2 * Math.log((shots + 2) / (shots - hits + 1)))
+        var diameter = spread * spread_unit * range * range_unit * 2 * Math.sqrt(2 * Math.log((shots + 2) / (shots - hits + 1)))
           / (coeff * diameter_unit * distance * distance_unit);
         var spread2 = spread * coeff2 * spread_unit * distance2 * distance2_unit
           / (coeff * spread2_unit * distance * distance_unit);
@@ -68,7 +69,7 @@
         <select id="diameter_unit">
   <option value="0.001" selected>mm</option>
   <option value="0.0254">inches</option>
-</select> diameter circle at
+</select> diameter target at
         <select id="range">
   <option value="7">7</option>
   <option value="10">10</option>
