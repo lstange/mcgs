@@ -582,7 +582,7 @@ class DescriptiveStat
 
     double variance(void) const
     {
-      return ( (n_ > 1) ? s_ / (n_ - 1) : 0 );
+      return (n_ > 1) ? s_ / (n_ - 1) : std::numeric_limits<double>::quiet_NaN();
     }
 
     double stdev(void) const
@@ -595,7 +595,8 @@ class DescriptiveStat
       return stdev() / mean();
     }
 
-    void show(const char* metric, double theoretical = 0) {
+    void show(const char* metric, double theoretical = 0)
+    {
       std::cout << metric << " mean=" << mean(); 
       if (theoretical > 0) {
         std::cout << " (expected " << theoretical << ")";
