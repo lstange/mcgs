@@ -4,7 +4,7 @@
 
   Building:
   
-  g++ -O3 -Wall -Wextra -std=c++11 -march=native -g -o mcgs mcgs.cpp
+  g++ -O3 -Wall -Wextra -std=c++11 -march=native -g -I ~/boost_1_64_0 -o mcgs mcgs.cpp
 
 */
 #include <vector>
@@ -17,6 +17,7 @@
 #include <memory>
 #include <stdlib.h>
 #include <algorithm>
+#include <boost/math/distributions/chi_squared.hpp>
 
 // Abstract base class (interface) for random shot group generator, implementations follow
 class RandomNumberGenerator {
@@ -554,6 +555,45 @@ class ShotGroup {
       return amr;
     }
 
+    //
+    // Ballistic Accuracy Class (before rounding)
+    //
+    // For each group g, calculate group center (mean)
+    // For each shot i, find its radius squared (r2) relative to group center
+    // Gaussian correction factor cG=1/EXP(LN(SQRT(2/(2n-2)))+GAMMALN((2n-1)/2)-GAMMALN((2n-2)/2))
+    // Upper 90% confidence value sigma_U=cG*SQRT(SUM(r2)/CHIINV(0.9,2n-2))
+    // Ballistic Accuracy Class is ROUND(sigma_U,0)
+    //
+    // http://ballistipedia.com/index.php?title=Ballistic_Accuracy_Classification
+    //
+    double bac(void) const
+    {
+      unsigned n = impact_.size();
+      if (n < 2) return std::numeric_limits<double>::quiet_NaN();
+      std::complex<double> center = 0;
+      for (unsigned i = 0; i < n; i++) {
+        center += impact_.at(i);
+      }
+      center /= n;
+      double sum_r2 = 0;
+      for (unsigned i = 0; i < n; i++) {
+        sum_r2 += std::norm(impact_.at(i) - center);
+      }
+
+      // Memoize BAC coefficientsfactor to avoid recalculating it for each group
+      static unsigned memoized_n = 0;
+      static double memoized_factor = 0;
+      if (n != memoized_n) {
+        double cg = 1 / (exp(log(sqrt(2. / (2 * n - 2))) + lgamma((2. * n - 1) / 2) - lgamma((2. * n - 2) / 2)));
+        boost::math::chi_squared ch2(2 * n - 2);
+        double chisq_inv_rt = boost::math::quantile(ch2, 1 - 0.9);
+        // std::cout << "n=" << n << " chisq_inv_rt=" << chisq_inv_rt << " (should be 10.86494 for n = 10) \n";
+        memoized_factor = cg / sqrt(chisq_inv_rt);
+        memoized_n = n;
+      }
+      return memoized_factor * sqrt(sum_r2);
+    }
+
     void show(void) const
     {
       for (unsigned i = 0; i < impact_.size(); i++) {
@@ -941,7 +981,7 @@ int main(int argc, char* argv[])
   } else if (shots_in_group > 7) {
     sixtynine_to_r90hat_factor = 0.69;
   }
-  DescriptiveStat gs_s, gs_s2, bgs_s, ags_s, ags_s2, mgs_s, amr_s, aamr_s, rayleigh_s, mle_s, median_r_s;
+  DescriptiveStat gs_s, gs_s2, bgs_s, ags_s, ags_s2, mgs_s, amr_s, bac_s, aamr_s, rayleigh_s, mle_s, median_r_s;
   DescriptiveStat worst_r_s, second_worst_r_s;
   std::map< std::pair<unsigned, unsigned>, DescriptiveStat> sixtynine_r_s;
   DescriptiveStat nsd_s, wr_s, swr_s, sixtynine_s;
@@ -963,7 +1003,7 @@ int main(int argc, char* argv[])
   std::uniform_real_distribution<double> outlier_distribution;
   for (unsigned experiment = 0; experiment < experiments; experiment++) {
     double best_gs = 0;
-    DescriptiveStat gs, gs2, amr, wr, swr, sixtynine, rayleigh, mle;
+    DescriptiveStat gs, gs2, amr, bac, wr, swr, sixtynine, rayleigh, mle;
     std::vector<double> gsg_v;
     for (unsigned j = 0; j < groups_in_experiment; j++) { 
       ShotGroup g; 
@@ -1019,6 +1059,10 @@ int main(int argc, char* argv[])
       double this_amr = g.avg_miss_radius();
       amr_s.push(this_amr);
       amr.push(this_amr);
+
+      double this_bac = g.bac();
+      bac_s.push(this_bac);
+      bac.push(this_bac);
 
       double this_rayleigh = rayleigh_cep_factor * accumulate(r.begin(), r.end(), 0.);
       rayleigh.push(this_rayleigh);
@@ -1080,6 +1124,7 @@ int main(int argc, char* argv[])
       nsd_s.show("Kuchnost:");
     }
     amr_s.show("Average Miss Radius:");
+    bac_s.show("Ballistic Accuracy Class:");
     std::cout << "--- Robust precision estimators ---\n"; 
     gs_s2.show("Group size (excluding worst shot in group):");
     std::cout << "--- Hit probability estimators ---\n"; 
