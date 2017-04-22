@@ -580,14 +580,15 @@ class ShotGroup {
         sum_r2 += std::norm(impact_.at(i) - center);
       }
 
-      // Memoize BAC coefficientsfactor to avoid recalculating it for each group
+      // Memoize BAC factor to avoid recalculating it for each group
       static unsigned memoized_n = 0;
       static double memoized_factor = 0;
       if (n != memoized_n) {
         double cg = 1 / (exp(log(sqrt(2. / (2 * n - 2))) + lgamma((2. * n - 1) / 2) - lgamma((2. * n - 2) / 2)));
+std::cout << "n=" << n << " cg=" << cg << " (should be 1.0139785698 for n = 10) \n";
         boost::math::chi_squared ch2(2 * n - 2);
         double chisq_inv_rt = boost::math::quantile(ch2, 1 - 0.9);
-        // std::cout << "n=" << n << " chisq_inv_rt=" << chisq_inv_rt << " (should be 10.86494 for n = 10) \n";
+std::cout << "n=" << n << " chisq_inv_rt=" << chisq_inv_rt << " (should be 10.86494 for n = 10) \n";
         memoized_factor = cg / sqrt(chisq_inv_rt);
         memoized_n = n;
       }
@@ -992,6 +993,7 @@ int main(int argc, char* argv[])
   unsigned hits_sixtynine = 0;
   unsigned hits_rayleigh = 0;
   unsigned hits_mle = 0;
+  unsigned bac_gt_1_ct = 0;
   double r90hat_wmr = 0;
   double r90hat_swmr = 0;
   double r90hat_swmrr = 0;
@@ -1063,6 +1065,9 @@ int main(int argc, char* argv[])
       double this_bac = g.bac();
       bac_s.push(this_bac);
       bac.push(this_bac);
+      if (this_bac > 1) {
+        bac_gt_1_ct++;
+      }
 
       double this_rayleigh = rayleigh_cep_factor * accumulate(r.begin(), r.end(), 0.);
       rayleigh.push(this_rayleigh);
@@ -1125,6 +1130,8 @@ int main(int argc, char* argv[])
     }
     amr_s.show("Average Miss Radius:");
     bac_s.show("Ballistic Accuracy Class:");
+    std::cout << "Percent of groups with BAC>1: " 
+              << 100. * bac_gt_1_ct / groups_in_experiment / experiments << "%, expected 90%\n";
     std::cout << "--- Robust precision estimators ---\n"; 
     gs_s2.show("Group size (excluding worst shot in group):");
     std::cout << "--- Hit probability estimators ---\n"; 
