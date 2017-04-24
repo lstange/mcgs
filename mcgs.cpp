@@ -560,8 +560,7 @@ class ShotGroup {
     //
     // For each group g, calculate group center (mean)
     // For each shot i, find its radius squared (r2) relative to group center
-    // Gaussian correction factor cG=1/EXP(LN(SQRT(2/(2n-2)))+GAMMALN((2n-1)/2)-GAMMALN((2n-2)/2))
-    // Upper 90% confidence value sigma_U=cG*SQRT(SUM(r2)/CHIINV(0.9,2n-2))
+    // Upper 90% confidence value sigma_U=SQRT(SUM(r2)/CHIINV(0.9,2n-2))
     // Ballistic Accuracy Class is ROUND(sigma_U,0)
     //
     // http://ballistipedia.com/index.php?title=Ballistic_Accuracy_Classification
@@ -584,12 +583,9 @@ class ShotGroup {
       static unsigned memoized_n = 0;
       static double memoized_factor = 0;
       if (n != memoized_n) {
-        double cg = 1 / (exp(log(sqrt(2. / (2 * n - 2))) + lgamma((2. * n - 1) / 2) - lgamma((2. * n - 2) / 2)));
-std::cout << "n=" << n << " cg=" << cg << " (should be 1.0139785698 for n = 10) \n";
         boost::math::chi_squared ch2(2 * n - 2);
         double chisq_inv_rt = boost::math::quantile(ch2, 1 - 0.9);
-std::cout << "n=" << n << " chisq_inv_rt=" << chisq_inv_rt << " (should be 10.86494 for n = 10) \n";
-        memoized_factor = cg / sqrt(chisq_inv_rt);
+        memoized_factor = 1 / sqrt(chisq_inv_rt);
         memoized_n = n;
       }
       return memoized_factor * sqrt(sum_r2);
