@@ -309,6 +309,20 @@ struct ConvexHullPoint {
     std::complex<double> point_;
 };
 
+// Memoized BAC factor (to avoid recalculating it for each group)
+static double bac_factor(unsigned n)
+{
+  static unsigned memoized_n = 0;
+  static double memoized_factor = 0;
+  if (n != memoized_n) {
+    boost::math::chi_squared ch2(2 * n - 2);
+    double chisq_inv_rt = boost::math::quantile(ch2, 1 - 0.9);
+    memoized_factor = 1 / sqrt(chisq_inv_rt);
+    memoized_n = n;
+  }
+  return memoized_factor;
+}
+
 class ShotGroup {
   private:
     // Use complex type to store impact coordinates
@@ -578,17 +592,7 @@ class ShotGroup {
       for (unsigned i = 0; i < n; i++) {
         sum_r2 += std::norm(impact_.at(i) - center);
       }
-
-      // Memoize BAC factor to avoid recalculating it for each group
-      static unsigned memoized_n = 0;
-      static double memoized_factor = 0;
-      if (n != memoized_n) {
-        boost::math::chi_squared ch2(2 * n - 2);
-        double chisq_inv_rt = boost::math::quantile(ch2, 1 - 0.9);
-        memoized_factor = 1 / sqrt(chisq_inv_rt);
-        memoized_n = n;
-      }
-      return memoized_factor * sqrt(sum_r2);
+      return bac_factor(n) * sqrt(sum_r2);
     }
 
     void show(void) const
@@ -975,10 +979,8 @@ int main(int argc, char* argv[])
         sixtynine_to_r90hat_factor = 0.67024464399177286;
         break;
     }
-  } else if (shots_in_group > 7) {
-    sixtynine_to_r90hat_factor = 0.69;
   }
-  DescriptiveStat gs_s, gs_s2, bgs_s, ags_s, ags_s2, mgs_s, amr_s, bac_s, aamr_s, rayleigh_s, mle_s, median_r_s;
+  DescriptiveStat gs_s, gs_s2, bgs_s, ags_s, ags_s2, mgs_s, amr_s, bac_s, aamr_s, gbac_s, rayleigh_s, mle_s, median_r_s;
   DescriptiveStat worst_r_s, second_worst_r_s;
   std::map< std::pair<unsigned, unsigned>, DescriptiveStat> sixtynine_r_s;
   DescriptiveStat nsd_s, wr_s, swr_s, sixtynine_s;
@@ -997,10 +999,13 @@ int main(int argc, char* argv[])
   double r90hat_sixtynine = 0;
   double r90hat_rayleigh = 0;
   double r90hat_mle = 0;
+  double experiment_bac_factor = bac_factor(shots_in_group * groups_in_experiment);
+  double group_bac_factor = bac_factor(shots_in_group);
   std::default_random_engine outlier_generator;
   std::uniform_real_distribution<double> outlier_distribution;
   for (unsigned experiment = 0; experiment < experiments; experiment++) {
     double best_gs = 0;
+    double bac_sum_r2 = 0;
     DescriptiveStat gs, gs2, amr, bac, wr, swr, sixtynine, rayleigh, mle;
     std::vector<double> gsg_v;
     for (unsigned j = 0; j < groups_in_experiment; j++) { 
@@ -1061,6 +1066,7 @@ int main(int argc, char* argv[])
       double this_bac = g.bac();
       bac_s.push(this_bac);
       bac.push(this_bac);
+      bac_sum_r2 += this_bac * this_bac / (group_bac_factor * group_bac_factor);
       if (this_bac > 1) {
         bac_gt_1_ct++;
       }
@@ -1104,6 +1110,7 @@ int main(int argc, char* argv[])
       ags_s2.push(gs2.mean());
       mgs_s.push(median(gsg_v));
       aamr_s.push(amr.mean());
+      gbac_s.push(experiment_bac_factor * sqrt(bac_sum_r2));
       wr_s.push(wr.mean());
       swr_s.push(swr.mean());
       sixtynine_s.push(sixtynine.mean());
@@ -1203,6 +1210,7 @@ int main(int argc, char* argv[])
     ags_s2.show("Average group size (excluding worst shot in group):");
     mgs_s.show("Median group size:");
     aamr_s.show("Average of AMR of groups:");
+    gbac_s.show("BAC aggregated from groups:");
     wr_s.show("Average worst miss radius:");
     swr_s.show("Average second worst miss radius:");
     if (sixtynine_rank.first != sixtynine_rank.second) {
@@ -1211,7 +1219,9 @@ int main(int argc, char* argv[])
       sixtynine_s.show(":");
     }
   }  
-  std::cout << "--- R90 estimators ---\n"; 
+  std::cout << "--- R90 estimators ---\n";
+  // -1 because we use previos experiment to set threshold for the next.
+  // First experiment does not participate because it does not have a previous.
   double denominator = shots_in_group * ((double)groups_in_experiment * (experiments - 1));
   if (wmr_to_r90hat_factor > 0) {
     std::cout << "Percent of hits within " << wmr_to_r90hat_factor 
