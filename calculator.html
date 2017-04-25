@@ -32,60 +32,43 @@
       var distance9 = parseFloat(document.getElementById("distance9").value);
       var distance9_unit = parseFloat(document.getElementById("distance9_unit").value);
 
+      var sigma, spread2, r90;
       if (forward) {
         // Use additive (Laplace) smoothing - add one hit and one miss
         var spread = coeff * diameter * diameter_unit * distance * distance_unit
           / (spread_unit * range * range_unit * 2 * Math.sqrt(2 * Math.log((shots + 2.) / (shots - hits + 1.))));
-        var spread2 = coeff2 * diameter * diameter_unit * distance2 * distance2_unit
+        spread2 = coeff2 * diameter * diameter_unit * distance2 * distance2_unit
           / (spread2_unit * range * range_unit * 2 * Math.sqrt(2 * Math.log((shots + 2.) / (shots - hits + 1.))));
-        var r90 = diameter * diameter_unit * distance9 * distance9_unit
+        sigma = spread * spread_unit / (coeff * distance * distance_unit);
+        r90 = diameter * diameter_unit * distance9 * distance9_unit
           / (r90_unit * range * range_unit * 2 * Math.sqrt(Math.log((shots + 2.) / (shots - hits + 1.)) / Math.log(10)));
-        var d90 = 2 * r90;
         document.getElementById("spread").value = parseFloat(spread.toPrecision(4));
-        document.getElementById("spread2").value = parseFloat(spread2.toPrecision(4));
-        document.getElementById("r90").value = parseFloat(r90.toPrecision(4));
-        document.getElementById("d90").value = parseFloat(d90.toPrecision(4));
       } else {
         var diameter = spread * spread_unit * range * range_unit * 2 * Math.sqrt(2 * Math.log((shots + 2) / (shots - hits + 1)))
           / (coeff * diameter_unit * distance * distance_unit);
-        var spread2 = spread * coeff2 * spread_unit * distance2 * distance2_unit
+        spread2 = spread * coeff2 * spread_unit * distance2 * distance2_unit
           / (coeff * spread2_unit * distance * distance_unit);
-        var r90 = spread * spread_unit * distance9 * distance9_unit * Math.sqrt(2 * Math.log(10))
+        sigma = spread * spread_unit / (coeff * distance * distance_unit);
+        r90 = spread * spread_unit * distance9 * distance9_unit * Math.sqrt(2 * Math.log(10))
           / (coeff * r90_unit * distance * distance_unit);
-        var d90 = 2 * r90;
         document.getElementById("diameter").value = parseFloat(diameter.toPrecision(4));
-        document.getElementById("spread2").value = parseFloat(spread2.toPrecision(4));
-        document.getElementById("r90").value = parseFloat(r90.toPrecision(4));
-        document.getElementById("d90").value = parseFloat(d90.toPrecision(4));
       }
+      var sigma_moa = sigma * 360. * 60 / (2 * Math.PI);
+      var sigma_mrad = sigma * 1000;
+      var d90 = 2 * r90;
+      document.getElementById("spread2").value = parseFloat(spread2.toPrecision(4));
+      document.getElementById("r90").value = parseFloat(r90.toPrecision(4));
+      document.getElementById("d90").value = parseFloat(d90.toPrecision(4));
+      document.getElementById("sigma_moa").value = parseFloat(sigma_moa.toPrecision(4));
+      document.getElementById("sigma_mrad").value = parseFloat(sigma_mrad.toPrecision(4));
       return false;
     }
   </script>
-  <form onsubmit="return recalculate(true)">
-    <p>Assuming bivariate normal distribution of impact coordinates and perfect zero,
-      <p><input type="number" id="hits" min="1" max="100" value="43"> of
-        <input type="number" id="shots" min="1" max="100" value="60"> shots in
-        <input type="option" id="diameter" value="57" size="10">
-        <select id="diameter_unit">
-  <option value="0.001" selected>mm</option>
-  <option value="0.0254">inches</option>
-</select> diameter target at
-        <select id="range">
-  <option value="7">7</option>
-  <option value="10">10</option>
-  <option value="25">25</option>
-  <option value="50" selected>50</option>
-  <option value="100">100</option>
-</select>
-        <select id="range_unit">
-  <option value="0.3048">feet</option>
-  <option value="0.9144">yards</option>
-  <option value="1" selected>m</option>
-</select>
-        <input type="submit">
-  </form>
-  <p>is approximately the same as
-    <p>
+  <p>Assuming bivariate normal distribution of impact coordinates and perfect zero, 
+    the following statements are approximately equivalent:
+    <ul>
+
+    <li>
       <form onsubmit="return recalculate(false)">
         <input id="spread" value="1" size="10">
         <select id="spread_unit">
@@ -117,8 +100,32 @@
 </select>
         <input type="submit">
       </form>
-      <p>which is equivalent to
-        <p>
+
+      <li>
+    <form onsubmit="return recalculate(true)">
+        <input type="number" id="hits" min="1" max="100" value="43"> of
+        <input type="number" id="shots" min="1" max="100" value="60"> shots in
+        <input type="option" id="diameter" value="57" size="10">
+        <select id="diameter_unit">
+  <option value="0.001" selected>mm</option>
+  <option value="0.0254">inches</option>
+</select> diameter target at
+        <select id="range">
+  <option value="7">7</option>
+  <option value="10">10</option>
+  <option value="25">25</option>
+  <option value="50" selected>50</option>
+  <option value="100">100</option>
+</select>
+        <select id="range_unit">
+  <option value="0.3048">feet</option>
+  <option value="0.9144">yards</option>
+  <option value="1" selected>m</option>
+</select>
+        <input type="submit">
+  </form>
+      <hr width="512" align="left">
+        <li>
           <form>
             <input id="spread2" value="111.1" size="10" readOnly="true">
             <select id="spread2_unit">
@@ -150,12 +157,10 @@
 </select>
           </form>
 
-          <p>and to
-            <p>
-              <form>
+          <li>
+                <form>
                 R<sub>90</sub>=
-                <input id="r90" value="2.8" size="10" readOnly="true"> or D
-                <sub>90</sub>=
+                <input id="r90" value="2.8" size="10" readOnly="true">, D<sub>90</sub>=
                 <input id="d90" value="5.6" size="10" readOnly="true">
                 <select id="r90_unit">
   <option value="0.001">mm</option>
@@ -173,8 +178,12 @@
   <option value="0.9144" selected>yards</option>
   <option value="1">m</option>
 </select>
-              </form>
 
+      <li>&sigma;=
+        <input id="sigma_moa" value="1.246" size="10" readOnly="true">MOA=
+        <input id="sigma_mrad" value="0.3624" size="10" readOnly="true">milliradians
+              </form>
+         </ul>
 
 </body>
 
