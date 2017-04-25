@@ -309,20 +309,6 @@ struct ConvexHullPoint {
     std::complex<double> point_;
 };
 
-// Memoized BAC factor (to avoid recalculating it for each group)
-static double bac_factor(unsigned n)
-{
-  static unsigned memoized_n = 0;
-  static double memoized_factor = 0;
-  if (n != memoized_n) {
-    boost::math::chi_squared ch2(2 * n - 2);
-    double chisq_inv_rt = boost::math::quantile(ch2, 1 - 0.9);
-    memoized_factor = 1 / sqrt(chisq_inv_rt);
-    memoized_n = n;
-  }
-  return memoized_factor;
-}
-
 class ShotGroup {
   private:
     // Use complex type to store impact coordinates
@@ -569,6 +555,26 @@ class ShotGroup {
       return amr;
     }
 
+    // Average quintile
+    double aq(void) const
+    {
+      unsigned n = impact_.size();
+      if (n < 3) return std::numeric_limits<double>::quiet_NaN();
+      std::complex<double> center = 0;
+      for (unsigned i = 0; i < n; i++) {
+        center += impact_.at(i);
+      }
+      center /= n;
+      std::vector<double> r;
+      for (unsigned i = 0; i < n; i++) {
+        r.push_back(std::abs(impact_.at(i) - center));
+      }
+      std::sort(r.begin(), r.end());
+      unsigned sixth = (unsigned)(0.639 * (n + 1)) - 1;
+      unsigned ninth = (unsigned)(0.927 * (n + 1)) - 1;
+      return r.at(sixth) + r.at(ninth);
+    }
+
     //
     // Ballistic Accuracy Class (before rounding)
     //
@@ -592,7 +598,18 @@ class ShotGroup {
       for (unsigned i = 0; i < n; i++) {
         sum_r2 += std::norm(impact_.at(i) - center);
       }
-      return bac_factor(n) * sqrt(sum_r2);
+
+      // Memoized BAC factor (to avoid recalculating it for each group)
+      static unsigned memoized_n = 0;
+      static double memoized_factor = 0;
+      if (n != memoized_n) {
+        boost::math::chi_squared ch2(2 * n - 2);
+        double chisq_inv_rt = boost::math::quantile(ch2, 1 - 0.9);
+        memoized_factor = 1 / sqrt(chisq_inv_rt);
+        memoized_n = n;
+      }
+
+      return memoized_factor * sqrt(sum_r2);
     }
 
     void show(void) const
@@ -980,7 +997,7 @@ int main(int argc, char* argv[])
         break;
     }
   }
-  DescriptiveStat gs_s, gs_s2, bgs_s, ags_s, ags_s2, mgs_s, amr_s, bac_s, aamr_s, gbac_s, rayleigh_s, mle_s, median_r_s;
+  DescriptiveStat gs_s, gs_s2, bgs_s, ags_s, ags_s2, mgs_s, amr_s, bac_s, aq_s, aamr_s, rayleigh_s, mle_s, median_r_s;
   DescriptiveStat worst_r_s, second_worst_r_s;
   std::map< std::pair<unsigned, unsigned>, DescriptiveStat> sixtynine_r_s;
   DescriptiveStat nsd_s, wr_s, swr_s, sixtynine_s;
@@ -999,13 +1016,10 @@ int main(int argc, char* argv[])
   double r90hat_sixtynine = 0;
   double r90hat_rayleigh = 0;
   double r90hat_mle = 0;
-  double experiment_bac_factor = bac_factor(shots_in_group * groups_in_experiment);
-  double group_bac_factor = bac_factor(shots_in_group);
   std::default_random_engine outlier_generator;
   std::uniform_real_distribution<double> outlier_distribution;
   for (unsigned experiment = 0; experiment < experiments; experiment++) {
     double best_gs = 0;
-    double bac_sum_r2 = 0;
     DescriptiveStat gs, gs2, amr, bac, wr, swr, sixtynine, rayleigh, mle;
     std::vector<double> gsg_v;
     for (unsigned j = 0; j < groups_in_experiment; j++) { 
@@ -1066,7 +1080,6 @@ int main(int argc, char* argv[])
       double this_bac = g.bac();
       bac_s.push(this_bac);
       bac.push(this_bac);
-      bac_sum_r2 += this_bac * this_bac / (group_bac_factor * group_bac_factor);
       if (this_bac > 1) {
         bac_gt_1_ct++;
       }
@@ -1103,6 +1116,8 @@ int main(int argc, char* argv[])
           }
         }
       }
+
+      aq_s.push(g.aq());
     } // Next group
     if (groups_in_experiment > 1) {
       bgs_s.push(best_gs);
@@ -1110,7 +1125,6 @@ int main(int argc, char* argv[])
       ags_s2.push(gs2.mean());
       mgs_s.push(median(gsg_v));
       aamr_s.push(amr.mean());
-      gbac_s.push(experiment_bac_factor * sqrt(bac_sum_r2));
       wr_s.push(wr.mean());
       swr_s.push(swr.mean());
       sixtynine_s.push(sixtynine.mean());
@@ -1137,6 +1151,7 @@ int main(int argc, char* argv[])
               << 100. * bac_gt_1_ct / groups_in_experiment / experiments << "%, expected 90%\n";
     std::cout << "--- Robust precision estimators ---\n"; 
     gs_s2.show("Group size (excluding worst shot in group):");
+    aq_s.show("Average of two order statistics:");
     std::cout << "--- Hit probability estimators ---\n"; 
     double theoretical_cep = 0;
     if (proportion_of_outliers == 0) {
@@ -1210,7 +1225,6 @@ int main(int argc, char* argv[])
     ags_s2.show("Average group size (excluding worst shot in group):");
     mgs_s.show("Median group size:");
     aamr_s.show("Average of AMR of groups:");
-    gbac_s.show("BAC aggregated from groups:");
     wr_s.show("Average worst miss radius:");
     swr_s.show("Average second worst miss radius:");
     if (sixtynine_rank.first != sixtynine_rank.second) {
