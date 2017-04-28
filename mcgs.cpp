@@ -598,27 +598,22 @@ class ShotGroup {
       unsigned n = impact_.size();
       if (n < 2) return std::numeric_limits<double>::quiet_NaN();
 
-      // Find group center
-      std::complex<double> center = 0;
+      // Pairwise distances
+      std::vector<double> d;
       for (unsigned i = 0; i < n; i++) {
-        center += impact_.at(i);
+        for (unsigned j = i + 1; j < n; j++) {
+          d.push_back(std::abs(impact_.at(i) - impact_.at(j)));
+        }
       }
-      center /= n;
+      std::sort(d.begin(), d.end());
 
-      // Measure miss radii from group center, sort ascending
-      std::vector<double> r;
-      for (unsigned i = 0; i < n; i++) {
-        r.push_back(std::abs(impact_.at(i) - center));
-      }
-      std::sort(r.begin(), r.end());
-
-      // Weighted average of miss radii
+      // Weighted average
       double numerator = 0;
       double denominator = 0;
-      for (unsigned i = 0; i < n; i++) {
-        double x = (double)i / (n - 1); // x from 0 to 1
-        double w = (x - 1) * (x - 1) * x * x / ((x - 1) * (x - 1) + 0.01);
-        numerator += r.at(i) * w;
+      for (unsigned i = 0; i < d.size(); i++) {
+        double x = (double)i / (d.size() - 1); // x from 0 to 1
+        double w = (x - 1) * (x - 1) * x * x / ((x - 1) * (x - 1) + 0.05);
+        numerator += d.at(i) * w;
         denominator += w;
       }
       return numerator / denominator;
@@ -1009,7 +1004,7 @@ int main(int argc, char* argv[])
         break;
     }
   }
-  DescriptiveStat gs_s, gs_s2, bgs_s, ags_s, ags_s2, mgs_s, amr_s, bac_s, rbac_s, aamr_s, rayleigh_s, mle_s, median_r_s;
+  DescriptiveStat gs_s, gs_s2, bgs_s, ags_s, ags_s2, mgs_s, amr_s, bac_s, /*rbac_s,*/ aamr_s, rayleigh_s, mle_s, median_r_s;
   DescriptiveStat worst_r_s, second_worst_r_s;
   std::map< std::pair<unsigned, unsigned>, DescriptiveStat> sixtynine_r_s;
   DescriptiveStat nsd_s, wr_s, swr_s, sixtynine_s;
@@ -1094,7 +1089,7 @@ int main(int argc, char* argv[])
       if (this_bac > 1) {
         bac_gt_1_ct++;
       }
-      rbac_s.push(g.robust_bac());
+      //rbac_s.push(g.robust_bac());
 
       double this_rayleigh = rayleigh_cep_factor * accumulate(r.begin(), r.end(), 0.);
       rayleigh.push(this_rayleigh);
@@ -1160,7 +1155,7 @@ int main(int argc, char* argv[])
     std::cout << "Percent of groups with BAC>1: " 
               << 100. * bac_gt_1_ct / groups_in_experiment / experiments << "%, expected 90%\n";
     std::cout << "--- Robust precision estimators ---\n"; 
-    rbac_s.show("Robust BAC:");
+    //rbac_s.show("Robust BAC:");
     gs_s2.show("Group size (excluding worst shot in group):");
     std::cout << "--- Hit probability estimators ---\n"; 
     double theoretical_cep = 0;
