@@ -592,11 +592,12 @@ class ShotGroup {
       return memoized_factor * sqrt(sum_r2);
     }
 
-    // Robust version of BAC
-    double robust_bac(void) const
+    // Pairwise distances weighted by rank
+    double pdwr(void) const
     {
       unsigned n = impact_.size();
-      if (n < 2) return std::numeric_limits<double>::quiet_NaN();
+      if (n < 3) return std::numeric_limits<double>::quiet_NaN();
+      if (n > 10) return std::numeric_limits<double>::quiet_NaN();
 
       // Pairwise distances
       std::vector<double> d;
@@ -607,14 +608,13 @@ class ShotGroup {
       }
       std::sort(d.begin(), d.end());
 
-      // Weighted average
+      // Weighted average using rank as weight
       double numerator = 0;
       double denominator = 0;
       for (unsigned i = 0; i < d.size(); i++) {
-        double x = (double)i / (d.size() - 1); // x from 0 to 1
-        double w = (x - 1) * (x - 1) * x * x / ((x - 1) * (x - 1) + 0.05);
-        numerator += d.at(i) * w;
-        denominator += w;
+        double weight = i + 1.;
+        numerator += d.at(i) * weight;
+        denominator += weight;
       }
       return numerator / denominator;
     }
@@ -1004,7 +1004,7 @@ int main(int argc, char* argv[])
         break;
     }
   }
-  DescriptiveStat gs_s, gs_s2, bgs_s, ags_s, ags_s2, mgs_s, amr_s, bac_s, /*rbac_s,*/ aamr_s, rayleigh_s, mle_s, median_r_s;
+  DescriptiveStat gs_s, gs_s2, bgs_s, ags_s, ags_s2, mgs_s, amr_s, bac_s, pdwr_s, aamr_s, rayleigh_s, mle_s, median_r_s;
   DescriptiveStat worst_r_s, second_worst_r_s;
   std::map< std::pair<unsigned, unsigned>, DescriptiveStat> sixtynine_r_s;
   DescriptiveStat nsd_s, wr_s, swr_s, sixtynine_s;
@@ -1089,7 +1089,7 @@ int main(int argc, char* argv[])
       if (this_bac > 1) {
         bac_gt_1_ct++;
       }
-      //rbac_s.push(g.robust_bac());
+      pdwr_s.push(g.pdwr());
 
       double this_rayleigh = rayleigh_cep_factor * accumulate(r.begin(), r.end(), 0.);
       rayleigh.push(this_rayleigh);
@@ -1151,11 +1151,11 @@ int main(int argc, char* argv[])
       nsd_s.show("Kuchnost:");
     }
     amr_s.show("Average Miss Radius:");
+    pdwr_s.show("Pairwise distances weighted by rank:");
     bac_s.show("Ballistic Accuracy Class:");
     std::cout << "Percent of groups with BAC>1: " 
               << 100. * bac_gt_1_ct / groups_in_experiment / experiments << "%, expected 90%\n";
     std::cout << "--- Robust precision estimators ---\n"; 
-    //rbac_s.show("Robust BAC:");
     gs_s2.show("Group size (excluding worst shot in group):");
     std::cout << "--- Hit probability estimators ---\n"; 
     double theoretical_cep = 0;
