@@ -593,7 +593,7 @@ class ShotGroup {
     }
 
     // Pairwise distances weighted by rank
-    double pdwr(void) const
+    double pdwr(double threshold = 1) const
     {
       unsigned n = impact_.size();
       if (n < 3) return std::numeric_limits<double>::quiet_NaN();
@@ -608,13 +608,16 @@ class ShotGroup {
       }
       std::sort(d.begin(), d.end());
 
-      // Weighted average using rank as weight
+      // Average weighted by rank, possibly trimmed
       double numerator = 0;
       double denominator = 0;
+      threshold = threshold * threshold * d.size();
       for (unsigned i = 0; i < d.size(); i++) {
-        double weight = i + 1.;
-        numerator += d.at(i) * weight;
-        denominator += weight;
+        double weight = (i + 1.);
+        if (weight <= threshold) {
+          numerator += d.at(i) * weight;
+          denominator += weight;
+        }
       }
       return numerator / denominator;
     }
@@ -1004,7 +1007,7 @@ int main(int argc, char* argv[])
         break;
     }
   }
-  DescriptiveStat gs_s, gs_s2, bgs_s, ags_s, ags_s2, mgs_s, amr_s, bac_s, pdwr_s, aamr_s, rayleigh_s, mle_s, median_r_s;
+  DescriptiveStat gs_s, gs_s2, bgs_s, ags_s, ags_s2, mgs_s, amr_s, bac_s, pdwr_s, pdwr2_s, aamr_s, rayleigh_s, mle_s, median_r_s;
   DescriptiveStat worst_r_s, second_worst_r_s;
   std::map< std::pair<unsigned, unsigned>, DescriptiveStat> sixtynine_r_s;
   DescriptiveStat nsd_s, wr_s, swr_s, sixtynine_s;
@@ -1090,6 +1093,7 @@ int main(int argc, char* argv[])
         bac_gt_1_ct++;
       }
       pdwr_s.push(g.pdwr());
+      pdwr2_s.push(g.pdwr(0.9));
 
       double this_rayleigh = rayleigh_cep_factor * accumulate(r.begin(), r.end(), 0.);
       rayleigh.push(this_rayleigh);
@@ -1157,6 +1161,7 @@ int main(int argc, char* argv[])
               << 100. * bac_gt_1_ct / groups_in_experiment / experiments << "%, expected 90%\n";
     std::cout << "--- Robust precision estimators ---\n"; 
     gs_s2.show("Group size (excluding worst shot in group):");
+    pdwr2_s.show("Pairwise distances (excluding top 10%) weighted by rank:");
     std::cout << "--- Hit probability estimators ---\n"; 
     double theoretical_cep = 0;
     if (proportion_of_outliers == 0) {
