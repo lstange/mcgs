@@ -593,7 +593,7 @@ class ShotGroup {
     }
 
     // Pairwise distances weighted by rank
-    double pdwr(double threshold = 1) const
+    double pdwr(bool trim = false) const
     {
       unsigned n = impact_.size();
       if (n < 3) return std::numeric_limits<double>::quiet_NaN();
@@ -611,13 +611,13 @@ class ShotGroup {
       // Average weighted by rank, possibly trimmed
       double numerator = 0;
       double denominator = 0;
-      threshold = threshold * threshold * d.size();
-      for (unsigned i = 0; i < d.size(); i++) {
-        double weight = (i + 1.);
-        if (weight <= threshold) {
-          numerator += d.at(i) * weight;
-          denominator += weight;
-        }
+      unsigned m = d.size();
+      if (trim) {
+        m -= n - 1;
+      }
+      for (unsigned i = 0; i < m; i++) {
+        numerator += d.at(i) * (i + 1.);
+        denominator += (i + 1.);
       }
       return numerator / denominator;
     }
@@ -1007,8 +1007,8 @@ int main(int argc, char* argv[])
         break;
     }
   }
-  DescriptiveStat gs_s, gs_s2, bgs_s, ags_s, ags_s2, mgs_s, amr_s, bac_s, pdwr_s, pdwr2_s, aamr_s, rayleigh_s, mle_s, median_r_s;
-  DescriptiveStat worst_r_s, second_worst_r_s;
+  DescriptiveStat gs_s, gs_s2, bgs_s, ags_s, ags_s2, mgs_s, amr_s, bac_s, pdwr_s, pdwr2_s, aamr_s, rayleigh_s, rwr_s, mle_s, median_r_s;
+  DescriptiveStat worst_r_s, second_worst_r_s, rwr9_s;
   std::map< std::pair<unsigned, unsigned>, DescriptiveStat> sixtynine_r_s;
   DescriptiveStat nsd_s, wr_s, swr_s, sixtynine_s;
   unsigned hits_wmr = 0;
@@ -1093,11 +1093,23 @@ int main(int argc, char* argv[])
         bac_gt_1_ct++;
       }
       pdwr_s.push(g.pdwr());
-      pdwr2_s.push(g.pdwr(0.9));
+      pdwr2_s.push(g.pdwr(true));
 
       double this_rayleigh = rayleigh_cep_factor * accumulate(r.begin(), r.end(), 0.);
       rayleigh.push(this_rayleigh);
       rayleigh_s.push(this_rayleigh);
+
+      {
+        double rwr = 0, rwr9 = 0;
+        for (unsigned i = 0; i < r.size(); i++) {
+          rwr += r.at(i) * (i + 1);
+          if (i < r.size() - 1) {
+            rwr9 += r.at(i) * (i + 1);
+          }
+        }
+        rwr_s.push(rwr / r.size());
+        rwr9_s.push(rwr9 / (r.size() - 1));
+      }
       
       double this_mle = sqrt(accumulate(r2.begin(), r2.end(), 0.));
       mle.push(this_mle);
@@ -1161,13 +1173,14 @@ int main(int argc, char* argv[])
               << 100. * bac_gt_1_ct / groups_in_experiment / experiments << "%, expected 90%\n";
     std::cout << "--- Robust precision estimators ---\n"; 
     gs_s2.show("Group size (excluding worst shot in group):");
-    pdwr2_s.show("Pairwise distances (excluding top 10%) weighted by rank:");
+    pdwr2_s.show("Pairwise distances weighted by rank, trimmed:");
     std::cout << "--- Hit probability estimators ---\n"; 
     double theoretical_cep = 0;
     if (proportion_of_outliers == 0) {
       theoretical_cep =  sqrt(-2*log(0.5));
     }
     rayleigh_s.show("Rayleigh CEP estimator:", theoretical_cep);
+    rwr_s.show("Rank weighted miss radius:");
     mle_s.show("Maximum likelihood CEP estimator:", theoretical_cep);
     double theoretical_worst = 0;
     if (proportion_of_outliers == 0) {
@@ -1202,6 +1215,7 @@ int main(int argc, char* argv[])
       }
     }
     second_worst_r_s.show("Second worst miss radius:", theoretical_second_worst);
+    rwr9_s.show("Rank weighted miss radius (excluding worst):");
     std::cout << "--- Combinations of two order statistics ---\n"; 
     // Find combination of two order statistics with lowest CV
     {
