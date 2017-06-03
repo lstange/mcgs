@@ -1,0 +1,204 @@
+---
+title: "RWMRWD"
+output: 
+  html_document: 
+    self_contained: no
+---
+
+##Rank Weighted Mean of Right Winsorized Distances
+
+###Summary
+
+A robust sigma estimator for situations where fliers may pose a concern, efficiency is important, and computer is available to do the calculations.
+
+1. In a 10-shot group, calculate all pairwise distances (distances between the centers of two shots);
+2. Rank distances (assign them ranks from 1 to 45 in ascending order);
+3. Replace top 9 distances (from 37th to 45th) with the largest remaining distance (36th);
+4. Calculate weighted average using rank as weight;
+5. Divide by 2.0358 to get sigma.
+
+Relative efficiency compared to [BAC](http://ballistipedia.com/index.php?title=Ballistic_Accuracy_Classification) on standard bivariate normal distribution is approximately 96%.
+
+###Rationale
+
+BAC relies on finding the center, which is not easy to do in presence of outliers. Median and trimmed mean along x and y axes separately don't work well for finding the center (efficiency drops considerably), possibly because of lack of central symmetry.
+
+Pairwise distances allow to estimate sigma directly, without finding the center, but raise the question of how to aggregate them. Two common approaches to get robust estimates are trimmed mean and winsorized mean. Distances have natural floor of zero, so it is enough to trim or winsorize from the right. One shot in a 10 shot group can affect at most 9 pairwise distances, at least that many distances need to be trimmed for an estimator to be robust. Outliers are rare, so there is no reason to cut more.
+
+Not all ranks are equally important. The following Monte-Carlo simuilation allows to get a sense of how the weights should look like:
+
+1. Pull impact coordinates from standard bivariate normal distribution, creating many 10-shot groups
+2. Assign ranked pairwise distances (after trimming top 9) to independent variables X1-X36
+3. Fit linear regression with dependent variable equal to 1
+
+```{r weights, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE, fig.width=6, fig.height=6, dpi=150}
+n <- 10
+iterations <- 1000000
+distances <- n * (n - 1) / 2
+variables <- distances - (n - 1)
+experiments <- 32
+res <- matrix(ncol=variables, nrow=experiments)
+for (m in 1:experiments) {
+  dat <- matrix(ncol=variables, nrow=iterations)
+  for (k in 1:iterations) {
+    x <- rnorm(n); y <- rnorm(n)
+    d <- numeric();
+    p <- 1;
+    for (i in 1:(n-1)) {
+      for (j in (i+1):n) {
+        d[p] <- sqrt((x[i]-x[j])^2+(y[i]-y[j])^2)
+        p <- p + 1
+      }
+    }
+    dat[k,] <- sort(d)[1:variables]
+  }
+  dat <- data.frame(dat)
+  fit <- lm(rep(1, iterations) ~ 0 + ., dat)
+  res[m,] <- fit$coefficients
+}
+res <- data.frame(res)
+boxplot(res, xlab='Rank', ylab='Weight', ylim=c(0,0.25))
+abline(a=0, b=0)
+```
+
+The coefficients grow more or less linearly with rank, except for the top remaining rank that has a higher coefficent. Right winsorization approximates this structure reasonably well. This allows for an efficient, yet still relatively simple L-estimator.
+
+###Implementation
+
+```{r rwmrwd, echo=TRUE, message=FALSE, warning=FALSE}
+rwmrwd <- function(h)
+{
+  n <- nrow(h)                 # Number of shots in group
+  distances <- n * (n - 1) / 2 # Number of pairwise distances
+  d <- numeric();              # Vector of distances
+  p <- 1;                      # Current index within vector d
+  for (i in 1:(n - 1)) {
+    for (j in (i + 1):n) {
+      d[p] <- sqrt((h$x[i] - h$x[j]) ^ 2 + (h$y[i] - h$y[j]) ^ 2)
+      p <- p + 1
+    }
+  }
+  d <- sort(d)
+  d[(distances - n + 2):distances] <- d[distances - n + 1] # Winsorization
+  w <- seq(from = 1, to = distances)                       # Weight is rank
+  sum(d * w) / sum(w) / 2.0358                             # Weighted average
+}
+```
+
+###Simulation Results
+
+The following graphs show Monte-Carlo simulation results on contaminated normal distribution with various proportion and severity of fliers.
+
+```{r functions, echo=FALSE, message=FALSE, warning=FALSE}
+bivariate_normal <- function(n, sd = 1, flier_rate = 0, flier_severity = 3)
+{
+  d <- data.frame(x=rnorm(n), y=rnorm(n), z=runif(n))
+  d$x[d$z < flier_rate] <- d$x[d$z < flier_rate] * flier_severity
+  d
+}
+
+group_size <- function(h)
+{
+  n <- nrow(h)
+
+  # With only two shots, excluding one results in a zero size group
+  if (n < 3) {
+    return (0)
+  }
+      
+  # Find the two impacts defining extreme spread
+  extreme_spread <- sqrt((h$x[1]-h$x[2])^2+(h$y[1]-h$y[2])^2)
+  index_a <- 1
+  index_b <- 2
+  for (i in 1:(n - 1)) {
+    for (j in (i + 1):n) {
+      candidate = sqrt((h$x[i]-h$x[j])^2+(h$y[i]-h$y[j])^2)
+      if (extreme_spread < candidate) {
+        extreme_spread = candidate
+        index_a = i;
+        index_b = j;
+      }
+    }
+  }
+
+  # Worst shot must be one of the impacts defining extreme spread.
+  # Calculate group size without either one, return the smaller number.
+  excluding_a <- 0
+  excluding_b <- 0
+  index_aa <- index_a
+  index_bb <- index_b
+  for (i in 1:(n - 1)) {
+    for (j in (i + 1):n) {
+      candidate = sqrt((h$x[i]-h$x[j])*(h$x[i]-h$x[j])+(h$y[i]-h$y[j])*(h$y[i]-h$y[j]))
+      if (i != index_a & j != index_a & excluding_a < candidate) {
+        excluding_a <- candidate
+        index_aa <- i
+        index_bb <- j
+      }
+      if (i != index_b & j != index_b & excluding_b < candidate) {
+        excluding_b <- candidate
+        index_aa <- i
+        index_bb <- j
+      }
+    }
+  }
+  if (excluding_a < excluding_b) {
+    return (data.frame(s=extreme_spread, e=excluding_a, a=index_aa, b=index_bb, w=index_a))
+  } else {
+    return (data.frame(s=extreme_spread, e=excluding_b, a=index_aa, b=index_bb, w=index_b))
+  }
+}
+
+bac <- function(h)
+{
+  sqrt(mean((h$x-mean(h$x))^2+(h$y-mean(h$y))^2))
+}
+
+experiment <- function(flier_severity = 0, experiments = 10000)
+{
+  max_pct <- 10
+  cv_four5    <- numeric(max_pct + 1)
+  cv_two10ex1 <- numeric(max_pct + 1)
+  cv_two10rw  <- numeric(max_pct + 1)
+  cv_two10bac <- numeric(max_pct + 1)
+  pct <- 0:max_pct
+  for (p in pct) {
+    flier_rate <- p / 100.
+    four5 <- numeric(experiments)
+    two10ex1 <- numeric(experiments)
+    two10rw <- numeric(experiments)
+    two10bac <- numeric(experiments)
+    for (k in 1:experiments) {
+      a <- bivariate_normal(5, flier_rate = flier_rate, flier_severity = flier_severity)
+      b <- bivariate_normal(5, flier_rate = flier_rate, flier_severity = flier_severity)
+      c <- bivariate_normal(5, flier_rate = flier_rate, flier_severity = flier_severity)
+      d <- bivariate_normal(5, flier_rate = flier_rate, flier_severity = flier_severity)
+      four5[k] <- (group_size(a)$s + group_size(b)$s + group_size(c)$s + group_size(d)$s) / 4
+      ab <- rbind(a,b)
+      cd <- rbind(c,d)
+      two10ex1[k] <- (group_size(ab)$e + group_size(cd)$e) / 2
+      two10rw[k] <- (rwmrwd(ab) + rwmrwd(cd)) / 2
+      two10bac[k] <- (bac(ab) + bac(cd)) / 2
+    }
+    cv_four5   [p + 1] <- sd(four5)    / mean(four5)
+    cv_two10ex1[p + 1] <- sd(two10ex1) / mean(two10ex1)
+    cv_two10rw [p + 1] <- sd(two10rw)  / mean(two10rw)
+    cv_two10bac[p + 1] <- sd(two10bac) / mean(two10bac)
+  }
+  plot(pct, cv_four5, col='red', lty=1, type='l', ylim=c(0, 0.3), xlab='Proportion of fliers, %', ylab='CV', xlim=c(0,max_pct), main=paste0('Flier Severity ', flier_severity));
+  lines(pct, cv_two10ex1, col='green', lty=2);
+  lines(pct, cv_two10rw, col='blue', lty=3);
+  lines(pct, cv_two10bac, col='cyan', lty=4);
+  legend("bottomleft", inset=0, c('Extreme spread, four 5-shot groups', 'Excluding worst shot, two 10-shot groups', 'RWMRWD, two 10-shot groups', 'BAC, two 10-shot groups'), lwd=2, lty=c(1,2,3,4), col=c('red','green','blue','cyan'), bty='n');
+}
+```
+
+```{r severity2, echo=FALSE, message=FALSE, warning=FALSE, fig.width=6, fig.height=6, dpi=150}
+experiment(2)
+```
+```{r severity3, echo=FALSE, message=FALSE, warning=FALSE, fig.width=6, fig.height=6, dpi=150}
+experiment(3)
+```
+```{r severity5, echo=FALSE, message=FALSE, warning=FALSE, fig.width=6, fig.height=6, dpi=150}
+experiment(5)
+```

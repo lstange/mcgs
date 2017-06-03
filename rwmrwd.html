@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+
+
+<title>RWMRWD</title>
+
+<script src="rwmrwd_files/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="rwmrwd_files/bootstrap-3.3.5/css/bootstrap.min.css" rel="stylesheet" />
+<script src="rwmrwd_files/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="rwmrwd_files/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="rwmrwd_files/bootstrap-3.3.5/shim/respond.min.js"></script>
+<script src="rwmrwd_files/navigation-1.1/tabsets.js"></script>
+<link href="rwmrwd_files/highlightjs-1.1/default.css" rel="stylesheet" />
+<script src="rwmrwd_files/highlightjs-1.1/highlight.js"></script>
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs && document.readyState && document.readyState === "complete") {
+   window.setTimeout(function() {
+      hljs.initHighlighting();
+   }, 0);
+}
+</script>
+
+
+
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+  height: auto;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+</style>
+
+
+
+<div class="container-fluid main-container">
+
+<!-- tabsets -->
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+</script>
+
+<!-- code folding -->
+
+
+
+
+
+
+<div class="fluid-row" id="header">
+
+
+
+<h1 class="title toc-ignore">RWMRWD</h1>
+
+</div>
+
+
+<div id="rank-weighted-mean-of-right-winsorized-distances" class="section level2">
+<h2>Rank Weighted Mean of Right Winsorized Distances</h2>
+<div id="summary" class="section level3">
+<h3>Summary</h3>
+<p>A robust sigma estimator for situations where fliers may pose a concern, efficiency is important, and computer is available to do the calculations.</p>
+<ol style="list-style-type: decimal">
+<li>In a 10-shot group, calculate all pairwise distances (distances between the centers of two shots);</li>
+<li>Rank distances (assign them ranks from 1 to 45 in ascending order);</li>
+<li>Replace top 9 distances (from 37th to 45th) with the largest remaining distance (36th);</li>
+<li>Calculate weighted average using rank as weight;</li>
+<li>Divide by 2.0358 to get sigma.</li>
+</ol>
+<p>Relative efficiency compared to <a href="http://ballistipedia.com/index.php?title=Ballistic_Accuracy_Classification">BAC</a> on standard bivariate normal distribution is approximately 96%.</p>
+</div>
+<div id="rationale" class="section level3">
+<h3>Rationale</h3>
+<p>BAC relies on finding the center, which is not easy to do in presence of outliers. Median and trimmed mean along x and y axes separately don’t work well for finding the center (efficiency drops considerably), possibly because of lack of central symmetry.</p>
+<p>Pairwise distances allow to estimate sigma directly, without finding the center, but raise the question of how to aggregate them. Two common approaches to get robust estimates are trimmed mean and winsorized mean. Distances have natural floor of zero, so it is enough to trim or winsorize from the right. One shot in a 10 shot group can affect at most 9 pairwise distances, at least that many distances need to be trimmed for an estimator to be robust. Outliers are rare, so there is no reason to cut more.</p>
+<p>Not all ranks are equally important. The following Monte-Carlo simuilation allows to get a sense of how the weights should look like:</p>
+<ol style="list-style-type: decimal">
+<li>Pull impact coordinates from standard bivariate normal distribution, creating many 10-shot groups</li>
+<li>Assign ranked pairwise distances (after trimming top 9) to independent variables X1-X36</li>
+<li>Fit linear regression with dependent variable equal to 1</li>
+</ol>
+<p><img src="rwmrwd_files/figure-html/weights-1.png" width="900" /></p>
+<p>The coefficients grow more or less linearly with rank, except for the top remaining rank that has a higher coefficent. Right winsorization approximates this structure reasonably well. This allows for an efficient, yet still relatively simple L-estimator.</p>
+</div>
+<div id="implementation" class="section level3">
+<h3>Implementation</h3>
+<pre class="r"><code>rwmrwd &lt;- function(h)
+{
+  n &lt;- nrow(h)                 # Number of shots in group
+  distances &lt;- n * (n - 1) / 2 # Number of pairwise distances
+  d &lt;- numeric();              # Vector of distances
+  p &lt;- 1;                      # Current index within vector d
+  for (i in 1:(n - 1)) {
+    for (j in (i + 1):n) {
+      d[p] &lt;- sqrt((h$x[i] - h$x[j]) ^ 2 + (h$y[i] - h$y[j]) ^ 2)
+      p &lt;- p + 1
+    }
+  }
+  d &lt;- sort(d)
+  d[(distances - n + 2):distances] &lt;- d[distances - n + 1] # Winsorization
+  w &lt;- seq(from = 1, to = distances)                       # Weight is rank
+  sum(d * w) / sum(w) / 2.0358                             # Weighted average
+}</code></pre>
+</div>
+<div id="simulation-results" class="section level3">
+<h3>Simulation Results</h3>
+<p>The following graphs show Monte-Carlo simulation results on contaminated normal distribution with various proportion and severity of fliers.</p>
+<p><img src="rwmrwd_files/figure-html/severity2-1.png" width="900" /> <img src="rwmrwd_files/figure-html/severity3-1.png" width="900" /> <img src="rwmrwd_files/figure-html/severity5-1.png" width="900" /></p>
+</div>
+</div>
+
+
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

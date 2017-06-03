@@ -596,8 +596,20 @@ class ShotGroup {
     double pdwr(bool trim = false) const
     {
       unsigned n = impact_.size();
-      if (n < 3) return std::numeric_limits<double>::quiet_NaN();
-      if (n > 10) return std::numeric_limits<double>::quiet_NaN();
+      
+      // Precomputed scaling factor to convert the result to sigma
+      double scaling_factor = 0;
+      switch (n) {
+        case  3: scaling_factor = trim ? 1 / 1.04273 : 1 / 2.00018; break;
+        case  4: scaling_factor = trim ? 1 / 1.31192 : 1 / 2.1068;  break;
+        case  5: scaling_factor = trim ? 1 / 1.46386 : 1 / 2.16243; break;
+        case  6: scaling_factor = trim ? 1 / 1.56703 : 1 / 2.19481; break;
+        case  7: scaling_factor = trim ? 1 / 1.64232 : 1 / 2.21542; break;
+        case  8: scaling_factor = trim ? 1 / 1.70089 : 1 / 2.22942; break;
+        case  9: scaling_factor = trim ? 1 / 1.74798 : 1 / 2.2394;  break;
+        case 10: scaling_factor = trim ? 1 / 1.78699 : 1 / 2.24684; break;
+        default: return std::numeric_limits<double>::quiet_NaN();
+      }
 
       // Pairwise distances
       std::vector<double> d;
@@ -619,7 +631,89 @@ class ShotGroup {
         numerator += d.at(i) * (i + 1.);
         denominator += (i + 1.);
       }
-      return numerator / denominator;
+      return scaling_factor * numerator / denominator;
+    }
+
+    // Rank weighted mean of right winsorized pairwise distances
+    double rwmrwpd() const
+    {
+      unsigned n = impact_.size();
+
+      // Precomputed scaling factor to convert the result to sigma
+      double scaling_factor = 0;
+      switch (n) {
+        case  3: scaling_factor = 1 / 1.04273; break;
+        case  4: scaling_factor = 1 / 1.48818; break;
+        case  5: scaling_factor = 1 / 1.69422; break;
+        case  6: scaling_factor = 1 / 1.81984; break;
+        case  7: scaling_factor = 1 / 1.90066; break;
+        case  8: scaling_factor = 1 / 1.95899; break;
+        case  9: scaling_factor = 1 / 2.00215; break;
+        case 10: scaling_factor = 1 / 2.03579; break;
+        default: return std::numeric_limits<double>::quiet_NaN();
+      }
+      
+      // Pairwise distances
+      std::vector<double> d;
+      for (unsigned i = 0; i < n; i++) {
+        for (unsigned j = i + 1; j < n; j++) {
+          d.push_back(std::abs(impact_.at(i) - impact_.at(j)));
+        }
+      }
+      std::sort(d.begin(), d.end());
+
+      // Average weighted by rank and winsorized
+      double numerator = 0;
+      double denominator = 0;
+      unsigned m = d.size() - n;
+      for (unsigned i = 0; i < d.size(); i++) {
+        numerator += d.at(i < m ? i : m) * (i + 1.);
+        denominator += (i + 1.);
+      }
+      return scaling_factor * numerator / denominator;
+    }
+
+    // Qn with different rank
+    double tqn() const
+    {
+      unsigned n = impact_.size();
+      std::vector<double> d;
+      for (unsigned i = 0; i < n; i++) {
+        for (unsigned j = i + 1; j < n; j++) {
+          d.push_back(std::abs(impact_.at(i) - impact_.at(j)));
+        }
+      }
+      std::sort(d.begin(), d.end());
+      return d.at(d.size() - n);
+    }
+
+    // Square root of average of squared pairwise distances
+    double sraspd(bool trim = false) const
+    {
+      unsigned n = impact_.size();
+      if (n < 3 || n > 10) {
+        return std::numeric_limits<double>::quiet_NaN();
+      }
+
+      // Squares of pairwise distance
+      std::vector<double> d;
+      for (unsigned i = 0; i < n; i++) {
+        for (unsigned j = i + 1; j < n; j++) {
+          d.push_back(std::norm(impact_.at(i) - impact_.at(j)));
+        }
+      }
+
+      // Square root of average of squared pairwise distances, possibly trimmed
+      double sum_of_squares = 0;
+      unsigned m = d.size();
+      if (trim) {
+        m -= n - 1;
+        std::sort(d.begin(), d.end());
+      }
+      for (unsigned i = 0; i < m; i++) {
+        sum_of_squares += d.at(i);
+      }
+      return sqrt(sum_of_squares / m);
     }
 
     void show(void) const
@@ -821,7 +915,7 @@ int main(int argc, char* argv[])
   }
   std::cout << "\n";
   if (proportion_of_outliers > 0) {
-    std::cerr << "Using contaminated normal distribution: " << 
+    std::cout << "Using contaminated normal distribution: " << 
     (proportion_of_outliers * 100) << "% of observations are pulled from distribution with " <<
     outlier_severity << " times higher deviation\n";
   }
@@ -1007,7 +1101,9 @@ int main(int argc, char* argv[])
         break;
     }
   }
-  DescriptiveStat gs_s, gs_s2, bgs_s, ags_s, ags_s2, mgs_s, amr_s, bac_s, pdwr_s, pdwr2_s, aamr_s, rayleigh_s, rwr_s, mle_s, median_r_s;
+  DescriptiveStat gs_s, gs_s2, bgs_s, ags_s, ags_s2, mgs_s, amr_s, bac_s, pdwr_s, pdwr2_s, 
+                  sraspd_s, sraspd2_s, tqn_s, rwmrwpd_s, aamr_s, rayleigh_s, 
+                  rwr_s, mle_s, median_r_s;
   DescriptiveStat worst_r_s, second_worst_r_s, rwr9_s;
   std::map< std::pair<unsigned, unsigned>, DescriptiveStat> sixtynine_r_s;
   DescriptiveStat nsd_s, wr_s, swr_s, sixtynine_s;
@@ -1094,6 +1190,10 @@ int main(int argc, char* argv[])
       }
       pdwr_s.push(g.pdwr());
       pdwr2_s.push(g.pdwr(true));
+      sraspd_s.push(g.sraspd());
+      sraspd2_s.push(g.sraspd(true));
+      tqn_s.push(g.tqn());
+      rwmrwpd_s.push(g.rwmrwpd());
 
       double this_rayleigh = rayleigh_cep_factor * accumulate(r.begin(), r.end(), 0.);
       rayleigh.push(this_rayleigh);
@@ -1107,8 +1207,8 @@ int main(int argc, char* argv[])
             rwr9 += r.at(i) * (i + 1);
           }
         }
-        rwr_s.push(rwr / r.size());
-        rwr9_s.push(rwr9 / (r.size() - 1));
+        rwr_s.push(2 * rwr / (r.size() * (r.size() - 1)));
+        rwr9_s.push(2 * rwr9 / ((r.size() - 1) * (r.size() - 2)));
       }
       
       double this_mle = sqrt(accumulate(r2.begin(), r2.end(), 0.));
@@ -1167,13 +1267,18 @@ int main(int argc, char* argv[])
       nsd_s.show("Kuchnost:");
     }
     amr_s.show("Average Miss Radius:");
-    pdwr_s.show("Pairwise distances weighted by rank:");
+    double e = (proportion_of_outliers > 0 ? 0 : 1);
+    pdwr_s.show("Pairwise distances weighted by rank:", e);
+    sraspd_s.show("Square root of average of squared pairwise distances:");
     bac_s.show("Ballistic Accuracy Class:");
     std::cout << "Percent of groups with BAC>1: " 
               << 100. * bac_gt_1_ct / groups_in_experiment / experiments << "%, expected 90%\n";
     std::cout << "--- Robust precision estimators ---\n"; 
     gs_s2.show("Group size (excluding worst shot in group):");
-    pdwr2_s.show("Pairwise distances weighted by rank, trimmed:");
+    pdwr2_s.show("Pairwise distances weighted by rank, trimmed:", e);
+    sraspd2_s.show("Square root of average of squared pairwise distances, trimmed:");    
+    tqn_s.show("Tweaked Qn:"); 
+    rwmrwpd_s.show("Rank weighted mean of right Winsorized pairwise distances:", e);
     std::cout << "--- Hit probability estimators ---\n"; 
     double theoretical_cep = 0;
     if (proportion_of_outliers == 0) {
