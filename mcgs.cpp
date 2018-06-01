@@ -80,7 +80,7 @@ class FastRandomNumberGenerator : public RandomNumberGenerator {
         double r = sqrt(-2 * log(u));
         double x = r * cos(2 * M_PI * v);
         double y = r * sin(2 * M_PI * v);
-        if (isfinite(x) || isfinite(y)) {
+        if (isfinite(x) && isfinite(y)) {
           return std::complex<double>(x, y);
         }
       }
