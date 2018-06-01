@@ -53,6 +53,46 @@ class DefaultRandomNumberGenerator : public RandomNumberGenerator {
     }
 };
 
+
+// MCG 128 from http://www.pcg-random.org/posts/on-vignas-pcg-critique.html
+class FastRandomNumberGenerator : public RandomNumberGenerator {
+  __uint128_t state_;
+  
+  public:
+    FastRandomNumberGenerator() 
+    {
+      reset();
+    }
+  
+    void advance() {}
+
+    void reset() 
+    {
+      state_ = 1;   // can be seeded to any odd number
+    }
+
+    std::complex<double> point(unsigned dimension __attribute__((unused)))
+    {
+      for (;;) {
+        double u = ldexp(next(), -64);
+        double v = ldexp(next(), -64);
+        // Box-Muller transform
+        double r = sqrt(-2 * log(u));
+        double x = r * cos(2 * M_PI * v);
+        double y = r * sin(2 * M_PI * v);
+        if (isfinite(x) || isfinite(y)) {
+          return std::complex<double>(x, y);
+        }
+      }
+    }
+
+  private:
+    inline uint64_t next()
+    {
+      return (state_ *= 0xda942042e4dd58b5ULL) >> 64;
+    }
+};
+
 // 
 // Additive quasi-random generator
 //
@@ -874,7 +914,8 @@ int main(int argc, char* argv[])
     std::cerr << "Usage: mcgs experiments [[[[shots_in_group] groups_in_experiment] proportion_of_outliers] outlier_severity]\n"
                  "0 experiments to run a self-test,\n"
                  "negative experiments to use additive quasi-random number generator,\n"
-                 "negative shots_in_group to use Sobol quasi-random number generator\n";
+                 "negative shots_in_group to use Sobol quasi-random number generator,\n"
+                 "negative groups_in_experiment to use MCG 128 pseudo-random number generator\n";
     return -1;
   }
   std::unique_ptr<RandomNumberGenerator> rng(std::unique_ptr<RandomNumberGenerator>(new DefaultRandomNumberGenerator()));
@@ -899,7 +940,13 @@ int main(int argc, char* argv[])
   }
   unsigned groups_in_experiment = 1;
   if (argc > 3) {
-    groups_in_experiment = atoi(argv[3]);
+    int igie = atoi(argv[3]);
+    if (igie < 0) {
+      igie = -igie;
+      std::cout << "Using MCG 128 pseudo-random number generator for impact coordinates\n";
+      rng = std::unique_ptr<RandomNumberGenerator>(new FastRandomNumberGenerator());
+    }
+    groups_in_experiment = (unsigned)igie;
   }
   double proportion_of_outliers = 0.;
   if (argc > 4) {
