@@ -1,4 +1,8 @@
-
+//
+// Extreme spread of N shot group assuming impact coordinates follow standard normal distribution
+//
+// Monte-Carlo parallelized with OpenMP
+//
 // Building:
 //
 // g++ -Wall -O3 omp_es_mcg.cpp -lm -o omp_es_mcg -fopenmp -pg
