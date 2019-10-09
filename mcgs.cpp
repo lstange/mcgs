@@ -2,9 +2,13 @@
 
   Monte-Carlo simulation of group sizes under bivariate (possibly contaminated) normal distribution
 
+  Requirements:
+
+  sudo apt-get install libboost-all-dev
+
   Building:
   
-  g++ -O3 -Wall -Wextra -std=c++11 -march=native -g -I ~/boost_1_64_0 -o mcgs mcgs.cpp
+  g++ -O3 -Wall -Wextra -std=c++11 -march=native -g -o mcgs mcgs.cpp
 
 */
 #include <vector>
@@ -1148,7 +1152,7 @@ int main(int argc, char* argv[])
         break;
     }
   }
-  DescriptiveStat gs_s, gs_s2, bgs_s, ags_s, ags_s2, mgs_s, amr_s, bac_s, pdwr_s, pdwr2_s, 
+  DescriptiveStat gs_s, gs_s2, bgs_s, ags_s, ags_s2, mgs_s, wgs_s, amr_s, bac_s, pdwr_s, pdwr2_s, 
                   sraspd_s, sraspd2_s, tqn_s, rwmrwpd_s, aamr_s, rayleigh_s, 
                   rwr_s, mle_s, median_r_s;
   DescriptiveStat worst_r_s, second_worst_r_s, rwr9_s;
@@ -1172,7 +1176,7 @@ int main(int argc, char* argv[])
   std::default_random_engine outlier_generator;
   std::uniform_real_distribution<double> outlier_distribution;
   for (unsigned experiment = 0; experiment < experiments; experiment++) {
-    double best_gs = 0;
+    double best_gs = 0, worst_gs = 0;
     DescriptiveStat gs, gs2, amr, wr, swr, sixtynine, rayleigh, mle;
     std::vector<double> gsg_v;
     for (unsigned j = 0; j < groups_in_experiment; j++) { 
@@ -1221,8 +1225,12 @@ int main(int argc, char* argv[])
         if (best_gs > this_gs) {
           best_gs = this_gs;
         }
+        if (worst_gs < this_gs) {
+          worst_gs = this_gs;
+        }
       } else {
         best_gs = this_gs;
+        worst_gs = this_gs;
       }
       gs.push(this_gs);
 
@@ -1289,6 +1297,7 @@ int main(int argc, char* argv[])
     } // Next group
     if (groups_in_experiment > 1) {
       bgs_s.push(best_gs);
+      wgs_s.push(worst_gs);
       ags_s.push(gs.mean());
       ags_s2.push(gs2.mean());
       mgs_s.push(median(gsg_v));
@@ -1400,6 +1409,7 @@ int main(int argc, char* argv[])
     ags_s.show("Average group size:");
     ags_s2.show("Average group size (excluding worst shot in group):");
     mgs_s.show("Median group size:");
+    wgs_s.show("Worst group size:");
     aamr_s.show("Average of AMR of groups:");
     wr_s.show("Average worst miss radius:");
     swr_s.show("Average second worst miss radius:");
