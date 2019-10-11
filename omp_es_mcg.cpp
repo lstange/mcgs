@@ -1,11 +1,11 @@
 //
-// Extreme spread of N shot group assuming impact coordinates follow standard normal distribution
+// Extreme spread of five shot group assuming impact coordinates follow standard normal distribution
 //
 // Monte-Carlo parallelized with OpenMP
 //
 // Building:
 //
-// g++ -Wall -O3 omp_es_mcg.cpp -lm -o omp_es_mcg -fopenmp -pg
+// g++ -Wall -O3 -march=native omp_es_mcg.cpp -lm -o omp_es_mcg -fopenmp
 //
 #include <omp.h>
 #include <iostream>
@@ -21,7 +21,7 @@ inline double mcg128(__uint128_t& mcg128_state)
 double recurse(__uint128_t& mcg_state, unsigned zeroes)
 {
   double sum = 0;
-  for (unsigned group = 0; group < 10; group++) {
+  for (unsigned group = 0; group < 4; group++) {
     if (zeroes) {
   	  sum += recurse(mcg_state, zeroes - 1);
     } else {
@@ -51,12 +51,12 @@ double recurse(__uint128_t& mcg_state, unsigned zeroes)
       sum += extreme_spread;
     }
   }
-  return sum / 10;
+  return sum / 4;
 }
 
 int main(int argc, char* argv[])
 {
-  unsigned power = 6;
+  unsigned power = 12;
   if (argc == 2) {
   	power = atoi(argv[1]);
   }
@@ -71,9 +71,9 @@ int main(int argc, char* argv[])
     max = fmax(r, max);
   }
   avg /= nt;
-  std::cout.precision(8);
+  std::cout.precision(14);
   std::cout << "threads=" << nt << "\n" 
-            << "power=" << power << "\n" 
+            << "power_of_4=" << power << "\n" 
             << "min="<< min << "\n" 
             << "avg=" << avg << "\n" 
             << "max=" << max << "\n";
