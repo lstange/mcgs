@@ -5,12 +5,17 @@
 //
 // Building:
 //
-// g++ -Wall -O3 -march=native omp_es_avx2.cpp -lm -g -o omp_es_avx2 -fopenmp
+// g++-8 -Wall -O3 -std=c++11 -march=native es_omp_avx2.cpp -lm -g -o es_omp_avx2 -fopenmp
+//
+// Running:
+//
+// for run in {1..10}; do ./es_omp_avx2 | tee -a es_omp_avx2.csv; done
 //
 #include <omp.h>
 #include <iostream>
 #include <numeric>
-#include <complex>
+#include <chrono>
+#include <cmath>
 #include <x86intrin.h>
 
 extern "C" {
@@ -52,17 +57,17 @@ double recurse(__m256i prng_state[40], unsigned zeroes)
     }
 
     // Box-Muller transform, four at a time
-    const __m256d minus2 = _mm256_set_pd(-2, -2, -2, -2);
-    const __m256d twopi = _mm256_set_pd(2 * M_PI, 2 * M_PI, 2 * M_PI, 2 * M_PI); 
+    const auto minus2 = _mm256_set_pd(-2, -2, -2, -2);
+    const auto twopi = _mm256_set_pd(2 * M_PI, 2 * M_PI, 2 * M_PI, 2 * M_PI); 
     double z_s[4], z_c[4];
-    __m256i ptrs = _mm256_set_epi64x((uint64_t)&z_s[3],(uint64_t)&z_s[2],(uint64_t)&z_s[1],(uint64_t)&z_s[0]);
-    __m256i ptrc = _mm256_set_epi64x((uint64_t)&z_c[3],(uint64_t)&z_c[2],(uint64_t)&z_c[1],(uint64_t)&z_c[0]);             /* Pointers to the elements of z_s and z_c    */ 
+    auto ptrs = _mm256_set_epi64x((uint64_t)&z_s[3],(uint64_t)&z_s[2],(uint64_t)&z_s[1],(uint64_t)&z_s[0]);
+    auto ptrc = _mm256_set_epi64x((uint64_t)&z_c[3],(uint64_t)&z_c[2],(uint64_t)&z_c[1],(uint64_t)&z_c[0]);             /* Pointers to the elements of z_s and z_c    */ 
     __m256d x[20], y[20];
     for (unsigned i = 0, j = 0; i < 20; i += 4, j++) {
-      __m256d u = _mm256_set_pd(prng_output[i+3], prng_output[i+2], prng_output[i+1], prng_output[i]);
-      __m256d v = _mm256_set_pd(prng_output[i+23], prng_output[i+22], prng_output[i+21], prng_output[i+20]);
-      __m256d r = _mm256_sqrt_pd(_mm256_mul_pd(minus2, _ZGVdN4v_log(u))); 
-      __m256d theta = _mm256_mul_pd(twopi, v);
+      auto u = _mm256_set_pd(prng_output[i+3], prng_output[i+2], prng_output[i+1], prng_output[i]);
+      auto v = _mm256_set_pd(prng_output[i+23], prng_output[i+22], prng_output[i+21], prng_output[i+20]);
+      auto r = _mm256_sqrt_pd(_mm256_mul_pd(minus2, _ZGVdN4v_log(u))); 
+      auto theta = _mm256_mul_pd(twopi, v);
       _ZGVdN4vvv_sincos(theta, ptrs, ptrc);
       x[j] = _mm256_mul_pd(r, _mm256_set_pd(z_s[3],z_s[2],z_s[1],z_s[0]));
       y[j] = _mm256_mul_pd(r, _mm256_set_pd(z_c[3],z_c[2],z_c[1],z_c[0]));
@@ -83,14 +88,14 @@ double recurse(__m256i prng_state[40], unsigned zeroes)
     dx[8] = x[2] - x[4]; dy[8] = y[2] - y[4];
     dx[9] = x[3] - x[4]; dy[9] = y[3] - y[4];
 
-    __m256d max_d2 = _mm256_set_pd(0, 0, 0, 0);
+    auto max_d2 = _mm256_set_pd(0, 0, 0, 0);
     for (unsigned i = 0; i < 10; i++) {
-      __m256d dx2 = _mm256_mul_pd(dx[i], dx[i]);
-      __m256d dy2 = _mm256_mul_pd(dy[i], dy[i]);
-      __m256d d2 = _mm256_add_pd(dx2, dy2);
+      auto dx2 = _mm256_mul_pd(dx[i], dx[i]);
+      auto dy2 = _mm256_mul_pd(dy[i], dy[i]);
+      auto d2 = _mm256_add_pd(dx2, dy2);
       max_d2 = _mm256_max_pd(max_d2, d2);
     }
-    __m256d max_d = _mm256_sqrt_pd(max_d2);
+    auto max_d = _mm256_sqrt_pd(max_d2);
     double es[4];
     _mm256_storeu_pd(&es[0], max_d);
 
@@ -107,6 +112,7 @@ int main(int argc, char* argv[])
   }
   unsigned nt = omp_get_max_threads();
   double avg = 0, min = 100, max = 0;
+  auto start_time = std::chrono::system_clock::now();
   #pragma omp parallel for reduction (+:avg) reduction (min:min) reduction (max:max)
   for (unsigned j = 0; j < nt; j++) {
 
@@ -115,7 +121,9 @@ int main(int argc, char* argv[])
 
     // Initialize xoshiro256+ state using MCG 128 PRNG 
     // from http://www.pcg-random.org/posts/on-vignas-pcg-critique.html
-    __uint128_t mcg128_state = 2 * omp_get_thread_num() + 1; // can be seeded to any odd number
+    __uint128_t mcg128_state = (_rdtsc() << 8) 
+                             + (omp_get_thread_num() << 1)
+                             + 1; // can be seeded to any odd number
     for (unsigned i = 0; i < 40; i++) {
       uint64_t init[4];
       for (unsigned k = 0; k < 4; k++) {
@@ -124,17 +132,16 @@ int main(int argc, char* argv[])
       prng_state[i] = _mm256_set_epi64x(init[3], init[2], init[1], init[0]);
     }
 
-    double r = recurse(prng_state, power);
+    auto r = recurse(prng_state, power);
     avg += r;
     min = fmin(r, min);
     max = fmax(r, max);
   }
   avg /= nt;
+  auto end_time = std::chrono::system_clock::now();
+  std::chrono::duration<double> seconds = end_time - start_time;
   std::cout.precision(14);
-  std::cout << "threads=" << nt << "\n" 
-            << "power_of_4=" << power << "\n" 
-            << "min="<< min << "\n" 
-            << "avg=" << avg << "\n" 
-            << "max=" << max << "\n";
+  std::cout << "code,threads,power_of_4,min,avg,max,time\n";
+  std::cout << "AVX2," << nt << "," << power << "," << min << "," << avg << "," << max << "," << seconds.count() << "\n";
   return 0;
 }
