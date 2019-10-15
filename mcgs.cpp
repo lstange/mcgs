@@ -801,9 +801,13 @@ class DescriptiveStat
       return stdev() / mean();
     }
 
-    void show(const char* metric, double theoretical = 0)
+    void show(const char* metric, double theoretical = 0, bool suppress_nan = false)
     {
-      std::cout << metric << " mean=" << mean(); 
+      auto m = mean();
+      if (suppress_nan && !isfinite(m)) {
+        return;
+      }
+      std::cout << metric << " mean=" << m; 
       if (theoretical > 0) {
         std::cout << " (expected " << theoretical << ")";
       }      
@@ -936,6 +940,10 @@ int main(int argc, char* argv[])
     } else {
       shots_in_group = (unsigned)(isig);
     }
+  }
+  if (shots_in_group < 3) {
+    std::cerr << "Shots in group = " << shots_in_group << ", expected at least 3\n";
+    return -1;
   }
   if (experiments < 0) {
     experiments = -experiments;
@@ -1324,17 +1332,17 @@ int main(int argc, char* argv[])
     }
     amr_s.show("Average Miss Radius:");
     double e = (proportion_of_outliers > 0 ? 0 : 1);
-    pdwr_s.show("Pairwise distances weighted by rank:", e);
-    sraspd_s.show("Square root of average of squared pairwise distances:");
+    pdwr_s.show("Pairwise distances weighted by rank:", e, true);
+    sraspd_s.show("Square root of average of squared pairwise distances:", true);
     bac_s.show("Ballistic Accuracy Class:");
     std::cout << "Percent of groups with BAC>1: " 
               << 100. * bac_gt_1_ct / groups_in_experiment / experiments << "%, expected 90%\n";
     std::cout << "--- Robust precision estimators ---\n"; 
     gs_s2.show("Group size (excluding worst shot in group):");
-    pdwr2_s.show("Pairwise distances weighted by rank, trimmed:", e);
-    sraspd2_s.show("Square root of average of squared pairwise distances, trimmed:");    
+    pdwr2_s.show("Pairwise distances weighted by rank, trimmed:", e, true);
+    sraspd2_s.show("Square root of average of squared pairwise distances, trimmed:", true);    
     tqn_s.show("Tweaked Qn:"); 
-    rwmrwpd_s.show("Rank weighted mean of right Winsorized pairwise distances:", e);
+    rwmrwpd_s.show("Rank weighted mean of right Winsorized pairwise distances:", e, true);
     std::cout << "--- Hit probability estimators ---\n"; 
     double theoretical_cep = 0;
     if (proportion_of_outliers == 0) {
