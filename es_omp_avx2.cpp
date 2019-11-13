@@ -18,6 +18,8 @@
 #include <cmath>
 #include <x86intrin.h>
 
+//#define USE_MCG
+
 extern "C" {
   __m256d _ZGVdN4v_log(__m256d x);                    
   void    _ZGVdN4vvv_sincos(__m256d x, __m256i ptrs, __m256i ptrc);
@@ -42,7 +44,13 @@ void inline xoshiro256plus(__m256i state[4], double output[4])
   }
 }
 
-double recurse(__m256i prng_state[40], unsigned zeroes)
+double recurse(
+  #ifdef USE_MCG
+    __uint128_t& prng_state,
+  #else
+    __m256i prng_state[40],
+  #endif 
+     unsigned zeroes)
 {
   double sum = 0;
   if (zeroes) {
@@ -50,18 +58,26 @@ double recurse(__m256i prng_state[40], unsigned zeroes)
       sum += recurse(prng_state, zeroes - 1);
     }
   } else {
-    // Advance all PRNGs, four at a time
     double prng_output[40];
-    for (unsigned k = 0; k < 40; k += 4) {
-      xoshiro256plus(&prng_state[k], &prng_output[k]);
-    }
+    #ifdef USE_MCG
+      // Advance all PRNGs, one by one
+      for (unsigned k = 0; k < 40; k++) {
+        // MCG 128 PRNG from http://www.pcg-random.org/posts/on-vignas-pcg-critique.html
+        prng_output[k] = ldexp((prng_state *= 0xda942042e4dd58b5ULL) >> 64, -64);
+      }
+    #else
+      // Advance all PRNGs, four at a time
+      for (unsigned k = 0; k < 40; k += 4) {
+        xoshiro256plus(&prng_state[k], &prng_output[k]);
+      }
+    #endif
 
     // Box-Muller transform, four at a time
     const auto minus2 = _mm256_set_pd(-2, -2, -2, -2);
     const auto twopi = _mm256_set_pd(2 * M_PI, 2 * M_PI, 2 * M_PI, 2 * M_PI); 
     double z_s[4], z_c[4];
     auto ptrs = _mm256_set_epi64x((uint64_t)&z_s[3],(uint64_t)&z_s[2],(uint64_t)&z_s[1],(uint64_t)&z_s[0]);
-    auto ptrc = _mm256_set_epi64x((uint64_t)&z_c[3],(uint64_t)&z_c[2],(uint64_t)&z_c[1],(uint64_t)&z_c[0]);             /* Pointers to the elements of z_s and z_c    */ 
+    auto ptrc = _mm256_set_epi64x((uint64_t)&z_c[3],(uint64_t)&z_c[2],(uint64_t)&z_c[1],(uint64_t)&z_c[0]);
     __m256d x[20], y[20];
     for (unsigned i = 0, j = 0; i < 20; i += 4, j++) {
       auto u = _mm256_set_pd(prng_output[i+3], prng_output[i+2], prng_output[i+1], prng_output[i]);
@@ -115,24 +131,24 @@ int main(int argc, char* argv[])
   auto start_time = std::chrono::system_clock::now();
   #pragma omp parallel for reduction (+:avg) reduction (min:min) reduction (max:max)
   for (unsigned j = 0; j < nt; j++) {
-
-    // Need 40 PRNGs to get impact coordinates for 4 groups of 5 shots at once
-    __m256i prng_state[40];
-
-    // Initialize xoshiro256+ state using MCG 128 PRNG 
-    // from http://www.pcg-random.org/posts/on-vignas-pcg-critique.html
-    __uint128_t mcg128_state = (_rdtsc() << 8) 
-                             + (omp_get_thread_num() << 1)
-                             + 1; // can be seeded to any odd number
-    for (unsigned i = 0; i < 40; i++) {
-      uint64_t init[4];
-      for (unsigned k = 0; k < 4; k++) {
-        init[k] = (mcg128_state *= 0xda942042e4dd58b5ULL);
+    #ifdef USE_MCG
+      __uint128_t mcg128_state; // can be seeded to any odd number
+      _rdrand64_step((unsigned long long *)(&mcg128_state));
+      mcg128_state = (mcg128_state << 1) | 1;
+      auto r = recurse(mcg128_state, power);
+    #else
+      // Need 40 PRNGs to get impact coordinates for 4 groups of 5 shots at once
+      __m256i xoshiro_state[40];
+      for (unsigned i = 0; i < 40; i++) {
+        uint64_t init[4];
+        for (unsigned k = 0; k < 4; k++) {
+          _rdrand64_step((unsigned long long *)&init[k]);
+        }
+        xoshiro_state[i] = _mm256_set_epi64x(init[3], init[2], init[1], init[0]);
       }
-      prng_state[i] = _mm256_set_epi64x(init[3], init[2], init[1], init[0]);
-    }
+      auto r = recurse(xoshiro_state, power);
+    #endif
 
-    auto r = recurse(prng_state, power);
     avg += r;
     min = fmin(r, min);
     max = fmax(r, max);
