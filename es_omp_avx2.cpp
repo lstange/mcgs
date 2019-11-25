@@ -9,7 +9,7 @@
 //
 // Running:
 //
-// for run in {1..10}; do ./es_omp_avx2 | tee -a es_omp_avx2.csv; done
+// for run in {1..10}; do ./es_omp_avx2 14 | tee -a es_omp_avx2.csv; done
 //
 #include <omp.h>
 #include <iostream>

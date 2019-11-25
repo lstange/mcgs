@@ -1,0 +1,2 @@
+code,threads,power_of_4,min,avg,max,time
+CUDA thrust,12,8,3.0658599500469,3.0658762710529,3.065897872272,589.471859406
