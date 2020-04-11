@@ -101,7 +101,6 @@ class FastRandomNumberGenerator : public RandomNumberGenerator {
 // Additive quasi-random generator
 //
 // To get the next point, add a fixed step modulo 1 to the previous point. 
-// Use square roots of prime numbers as steps because they are irrational.
 //
 class AdditiveRandomNumberGenerator: public RandomNumberGenerator {
     std::vector<double> x_;
@@ -109,6 +108,8 @@ class AdditiveRandomNumberGenerator: public RandomNumberGenerator {
 
   public:
     explicit AdditiveRandomNumberGenerator(unsigned dimensions)
+#if 0
+    // Use square roots of prime numbers as steps because they are irrational.
     {
       unsigned nprimes = dimensions * 2; // Two coordinates for each point
       x_.resize(nprimes);
@@ -177,6 +178,41 @@ class AdditiveRandomNumberGenerator: public RandomNumberGenerator {
         }
       }
     }
+#else
+    // Rd quasi-random sequences http://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/
+    // In d dimensions, g is positive real root of f(x) = x ** (d + 1) - x - 1 = 0
+    // 3D example:
+    // g = 1.22074408460575947536
+    // a1 = 1.0/g
+    // a2 = 1.0/(g*g)
+    // a3 = 1.0/(g*g*g)
+    // x[n] = (0.5+a1*n) %1
+    // y[n] = (0.5+a2*n) %1
+    // z[n] = (0.5+a3*n) %1
+    {
+      unsigned d = dimensions * 2; // Two coordinates for each point
+      x_.resize(d);
+      step_.resize(d);
+      double x = 1.5; // initial approximation
+      for (unsigned i = 0; i < 30; i++) { // Newton-Raphson
+        double xd = 1;
+        for (unsigned j = 0; j < d; j++) {
+          xd *= x;
+        }
+        double adjustment = (xd * x - x - 1) / ((d + 1) * xd - 1);
+        x -= adjustment;
+        if (std::abs(adjustment) < 1E-16) {
+          break;
+        }
+      }
+      double a = 1.;
+      for (unsigned i = 0; i < d; i++) {
+        a /= x;
+        x_.at(i) = 0.5;
+        step_.at(i) = a;
+      }
+    }
+#endif
   
     void advance()
     {
