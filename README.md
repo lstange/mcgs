@@ -204,3 +204,5 @@ To compare with regular group size:
   + Assuming perfect zero, CEP in cm is about the same as 5 shot group size in inches (more precisely, coefficient is 2.6 rather than 2.54)
   + R<sub>90</sub> is about 60% larger than 4<sup>th</sup> miss radius in a 5 shot group (50% larger than average of two groups, 40% larger than average of many groups)
   + R<sub>90</sub> is about 69% of sum of 6<sup>th</sup> and 9<sup>th</sup> miss radiuses in a 10 shot group
+  + Probability that a 5 shot group from 1 MOA rifle is larger than a 5 shot group from 1.5 MOA rifle is approximately 15%
+  
