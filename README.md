@@ -40,7 +40,7 @@ with the three remaining shots.
 
 Outlier is a shot 2.5 times or more distant from mean point of impact of the other three shots than any of these three shots.
 
-Page 181 of NSD states that AKM should be within 15 cm at 100 m, which corresponds to 4.56 MOA average 5-shot group size. 
+Page 181 of NSD states that AKM should be within 15 cm at 100 m, which corresponds to 6.15 MOA average 5-shot group size. 
 
 ### Miss Radius
 
