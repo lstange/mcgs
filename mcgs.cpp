@@ -1369,14 +1369,14 @@ int main(int argc, char* argv[])
     amr_s.show("Average Miss Radius:");
     double e = (proportion_of_outliers > 0 ? 0 : 1);
     pdwr_s.show("Pairwise distances weighted by rank:", e, true);
-    sraspd_s.show("Square root of average of squared pairwise distances:", true);
+    sraspd_s.show("Square root of average of squared pairwise distances:", 0, true);
     bac_s.show("Ballistic Accuracy Class:");
     std::cout << "Percent of groups with BAC>1: " 
               << 100. * bac_gt_1_ct / groups_in_experiment / experiments << "%, expected 90%\n";
     std::cout << "--- Robust precision estimators ---\n"; 
     gs_s2.show("Group size (excluding worst shot in group):");
     pdwr2_s.show("Pairwise distances weighted by rank, trimmed:", e, true);
-    sraspd2_s.show("Square root of average of squared pairwise distances, trimmed:", true);    
+    sraspd2_s.show("Square root of average of squared pairwise distances, trimmed:", 0, true);    
     tqn_s.show("Tweaked Qn:"); 
     rwmrwpd_s.show("Rank weighted mean of right Winsorized pairwise distances:", e, true);
     std::cout << "--- Hit probability estimators ---\n"; 
