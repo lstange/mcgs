@@ -600,7 +600,7 @@ class ShotGroup {
           if (i == j) {
             continue;
           }
-          double candidate = std::abs(stp - impact_.at(i));
+          double candidate = std::abs(stp3 - impact_.at(j));
           if (r2 < candidate) {
             r2 = candidate;
           }
