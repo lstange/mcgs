@@ -570,8 +570,8 @@ class ShotGroup {
     }
     
     // As per NSD (page 181) should be within 15 cm at 100 m
-    // Group size 2.79295 corresponds to kuchnost~=3.15863,
-    // so this is equivalent to 4.56 MOA.
+    // Five shot group size 3.066 corresponds to kuchnost~=2.569,
+    // so this is equivalent to 6.15 MOA.
     double nsd_kuchnost(void) const
     {
       // Only defined for 4 shot groups
