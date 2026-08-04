@@ -316,6 +316,7 @@ public:
     
     void reset()
     {
+	  i_ = 0;
       for (unsigned j = 0; j < 20; j++) {
         x_[j] = 0;
       }
