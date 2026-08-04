@@ -193,13 +193,13 @@ experiment <- function(main=NA, ymax=3, yoffset=0, eccentricity=0, flier_rate=0,
   rmse69 <- sqrt(sum((kr69 - actual_r90)^2)/n);
   rmse20 <- sqrt(sum((rr20 - actual_r90)^2)/n);
   rmsemle <- sqrt(sum((mle20 - actual_r90)^2)/n);
-  mae55 <- sqrt(mean(abs(gs55 - actual_r90)));
-  mae4  <- sqrt(mean(abs(kr4  - actual_r90)));
-  mae44 <- sqrt(mean(abs(kr44 - actual_r90)));
-  mae9  <- sqrt(mean(abs(kr9  - actual_r90)));
-  mae69 <- sqrt(mean(abs(kr69 - actual_r90)));
-  mae20 <- sqrt(mean(abs(rr20 - actual_r90)));
-  maemle <- sqrt(mean(abs(mle20 - actual_r90)));
+  mae55 <- mean(abs(gs55 - actual_r90));
+  mae4  <- mean(abs(kr4  - actual_r90));
+  mae44 <- mean(abs(kr44 - actual_r90));
+  mae9  <- mean(abs(kr9  - actual_r90));
+  mae69 <- mean(abs(kr69 - actual_r90));
+  mae20 <- mean(abs(rr20 - actual_r90));
+  maemle <- mean(abs(mle20 - actual_r90));
   data.frame( hits55, hits4, hits44, hits9, hits69, hits20, hitsmle
             , rmse55, rmse4, rmse44, rmse9, rmse69, rmse20, rmsemle
             , mae55,  mae4,  mae44,  mae9,  mae69,  mae20,  maemle
