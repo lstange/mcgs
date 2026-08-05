@@ -1,8 +1,6 @@
 ---
 title: "Excluding One"
-output: 
-  html_document: 
-    self_contained: no
+output: html_document
 ---
 
 ```{r functions, echo=FALSE, message=FALSE, warning=FALSE}
