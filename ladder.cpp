@@ -16,10 +16,11 @@ int main(void)
   const unsigned K_POINTS = 41;
   const double K_STEP = .05;
   unsigned groups = 1000000000, seed = 0;
-  std::default_random_engine gen(seed);
+  std::mt19937_64 gen(seed);
   std::normal_distribution<double> dist;
   unsigned a_gt_b_count[K_POINTS] = {};
   double prev_es = 0;
+  std::complex<double> first_group[SHOTS_IN_GROUP];
   for (unsigned group = 0; group <= groups; group++) { // one more pass than groups because we reuse previous group
     std::complex<double> impact[SHOTS_IN_GROUP];
     double extreme_spread = 0;
@@ -34,11 +35,27 @@ int main(void)
       }
     }
     if (group > 0) {
+      // check if PRNG wrapped around and returned the same impacts
+      bool wraparound = true;
+      for (unsigned i = 0; i < SHOTS_IN_GROUP; i++) {
+        if (first_group[i] != impact[i]) { // exact comparison, zero tolerance
+          wraparound = false;
+          break;
+        }
+      }
+      if (wraparound) {
+        std::cerr << "WARNING: PRNG wraparaound detected at group " << group << "\n";
+      }
+
       for (unsigned k = 0; k < K_POINTS; k++) {
         if (extreme_spread > prev_es * (1 + k * K_STEP)) {
           a_gt_b_count[k]++;
         }
       } 
+    } else { // save the very first group
+      for (unsigned i = 0; i < SHOTS_IN_GROUP; i++) {
+        first_group[i] = impact[i];
+      }
     }
     prev_es = extreme_spread;
   }
@@ -52,68 +69,44 @@ int main(void)
 // 5 shot groups
 //
 // k P(ESa>ESb)
-// 1 49.9979%
-// 1.05  44.9833%
-// 1.1 40.2822%
-// 1.15  35.9235%
-// 1.2 31.9215%
-// 1.25  28.2775%
-// 1.3 24.986%
-// 1.35  22.0332%
-// 1.4 19.393%
-// 1.45  17.0474%
-// 1.5 14.9729%
-// 1.55  13.1383%
-// 1.6 11.5222%
-// 1.65  10.1043%
-// 1.7 8.86029%
-// 1.75  7.76888%
-// 1.8 6.81299%
-// 1.85  5.97747%
-// 1.9 5.24739%
-// 1.95  4.60836%
-// 2 4.05072%
-//
-// 3 shot groups
-// k P(ESa>ESb)
-// 1 50.0011%
-// 1.05  46.4175%
-// 1.1 43.0309%
-// 1.15  39.8464%
-// 1.2 36.8669%
-// 1.25  34.0895%
-// 1.3 31.5094%
-// 1.35  29.1178%
-// 1.4 26.906%
-// 1.45  24.8649%
-// 1.5 22.9834%
-// 1.55  21.2504%
-// 1.6 19.6576%
-// 1.65  18.1919%
-// 1.7 16.8453%
-// 1.75  15.6066%
-// 1.8 14.4686%
-// 1.85  13.424%
-// 1.9 12.4624%
-// 1.95  11.5775%
-// 2 10.7647%
-// 2.05  10.0154%
-// 2.1 9.32671%
-// 2.15  8.69314%
-// 2.2 8.10861%
-// 2.25  7.56911%
-// 2.3 7.07117%
-// 2.35  6.61095%
-// 2.4 6.18543%
-// 2.45  5.79244%
-// 2.5 5.42827%
-// 2.55  5.09172%
-// 2.6 4.77927%
-// 2.65  4.48947%
-// 2.7 4.22031%
-// 2.75  3.97044%
-// 2.8 3.73753%
-// 2.85  3.52107%
-// 2.9 3.31962%
-// 2.95  3.13179%
-// 3 2.95684%
+// 1 49.998%
+// 1.05  44.9864%
+// 1.1 40.284%
+// 1.15  35.9227%
+// 1.2 31.9194%
+// 1.25  28.2772%
+// 1.3 24.9857%
+// 1.35  22.032%
+// 1.4 19.3935%
+// 1.45  17.0488%
+// 1.5 14.9708%
+// 1.55  13.1363%
+// 1.6 11.5209%
+// 1.65  10.1013%
+// 1.7 8.8562%
+// 1.75  7.76493%
+// 1.8 6.80971%
+// 1.85  5.97425%
+// 1.9 5.24483%
+// 1.95  4.60698%
+// 2 4.04886%
+// 2.05  3.56101%
+// 2.1 3.13466%
+// 2.15  2.76154%
+// 2.2 2.43522%
+// 2.25  2.14967%
+// 2.3 1.89955%
+// 2.35  1.68017%
+// 2.4 1.48789%
+// 2.45  1.31881%
+// 2.5 1.1704%
+// 2.55  1.0399%
+// 2.6 0.924795%
+// 2.65  0.823675%
+// 2.7 0.734218%
+// 2.75  0.655321%
+// 2.8 0.585333%
+// 2.85  0.523511%
+// 2.9 0.468741%
+// 2.95  0.420244%
+// 3 0.377059%
