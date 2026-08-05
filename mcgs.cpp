@@ -936,7 +936,7 @@ int main(int argc, char* argv[])
         }
         time_t end_time;
         time(&end_time);
-        std::cout << (end_time - start_time) << " µs, sum=" << a;
+        std::cout << (end_time - start_time) << " s, sum=" << a;
 
         pseudo_rng.reset();
         std::cout << "\t";
@@ -951,7 +951,7 @@ int main(int argc, char* argv[])
           b += g.group_size_convex_hull();
         }
         time(&end_time);
-        std::cout << (end_time - start_time) << " µs, sum=" << b << "\n";
+        std::cout << (end_time - start_time) << " s, sum=" << b << "\n";
       }
       return 0;
     }
