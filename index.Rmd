@@ -220,15 +220,15 @@ group_examples <- function(yoffset=0, eccentricity=0, flier_rate=0, flier_severi
 }
 ```
 
-###Abstract
+### Abstract
 
 Several R<sub>90</sub> estimators are compared using Monte Carlo simulations. L-estimators based on second worst miss radius or R<sub>6:10</sub>+R<sub>9:10</sub> found to perform well on wide variety of input distributions.
 
-###Objective
+### Objective
 
 Based on observed shots, estimate R<sub>90</sub> (the radius of a circle that is expected to contain 90% of all impacts).
 
-###Estimators
+### Estimators
 
 **5x5 (NRA)**: Measure average extreme spread of five 5-shot groups. This common method is used by NRA magazine *American Rifleman* to report firearm accuracy. Multiply by 0.72 to get estimate of R<sub>90</sub>. This assumes perfect zero.
 
@@ -244,7 +244,7 @@ Based on observed shots, estimate R<sub>90</sub> (the radius of a circle that is
 
 **MLE 20**: Take square root of the sum of squares of 20 miss radiuses, multiply by 0.35 to get estimate of R<sub>90</sub>.
 
-###Experiment 0: Bivariate Normal Distribution
+### Experiment 0: Bivariate Normal Distribution
 
 Start with establishing the baseline. Pull impact coordinates from standard bivariate normal distibution, estimate R<sub>90</sub>, pull another impact, see if it lands inside R<sub>90</sub>. Compare root mean square error (RMSE) and mean absolute error (MAE) of different estimators.
 
@@ -277,7 +277,7 @@ Rayleigh estimator is just slightly better, but it requires 20 measurments. MLE 
 
 Now let's shake the ladder - see how well the estimators work when underlying assumptions are violated.
 
-###Experiment 1: Offset Zero
+### Experiment 1: Offset Zero
 
 Start by introducing some vertical offset (constant point of impact shift). Not much, just one $\sigma$. In practice this is pretty common. Constant wind, change in temperature and therefore muzzle velocity, or errors in determining range can all introduce systemic error.
 
@@ -303,7 +303,7 @@ e <- experiment(main='Offset Zero', ymax=1.5, yoffset=1);
 
 Other estimators still work ok.
 
-###Experiment 2: Contaminated Normal Distribution
+### Experiment 2: Contaminated Normal Distribution
 
 Now let's see what happens when instead of shifting point of impact we add some fliers. They are common in practice, and typical advice is to simply discard fliers. There are some problems, though.
 
@@ -335,7 +335,7 @@ e <- experiment(main='Contaminated Normal Distribution', ymax=1.2, flier_rate=0.
 
 Now 6&9 estimator outperforms others, and MLE is the worst.
 
-###Experiment 3: Unequal Variance
+### Experiment 3: Unequal Variance
 
 Now let's see what happens when vertical and horizontal dispersions are different. In this experiment we flatten the groups - increase horizontal dispersion and decrease vertical dispersion.
 
@@ -359,7 +359,7 @@ e <- experiment(main='Unequal Variance', ymax=1.5, eccentricity=0.75, legendpos=
 | Rayleigh 20 |             `r signif(e$hits20,3)`% | `r signif(e$rmse20,3)` |`r signif(e$mae20,3)`|
 | MLE 20      |            `r signif(e$hitsmle,3)`% | `r signif(e$rmsemle,3)`|`r signif(e$maemle,3)`|
 
-###Experiment 4: All Together Now
+### Experiment 4: All Together Now
 
 Now combine all factors together: increase standard deviation by a factor of 5 with 5% probability,
 add one $\sigma$ vertical offset, and flatten the groups.
@@ -382,7 +382,7 @@ e <- experiment(main='All Factors', ymax=1, yoffset=1, eccentricity=0.75, flier_
 | Rayleigh 20 |             `r signif(e$hits20,3)`% | `r signif(e$rmse20,3)` |`r signif(e$mae20,3)`|
 | MLE 20      |            `r signif(e$hitsmle,3)`% | `r signif(e$rmsemle,3)`|`r signif(e$maemle,3)`|
 
-###Experiment 5: Actual Data
+### Experiment 5: Actual Data
 
 Finally let's look at some real-world data: instead of generating impact coordinates with pseudorandom number generator, sample with replacement from `r length(experimental_data)` actual shots. Only miss radiuses were recorded, so 5x5 estimator is not shown.
 
@@ -399,7 +399,7 @@ e <- experiment(main='Actual Experimental Data', ymax=0.08, simulate=F, legendpo
 | Rayleigh 20 |             `r signif(e$hits20,3)`% | `r signif(e$rmse20,3)` |`r signif(e$mae20,3)`|
 | MLE 20      |            `r signif(e$hitsmle,3)`% | `r signif(e$rmsemle,3)`|`r signif(e$maemle,3)`|
 
-###Appendix
+### Appendix
 
 This section describes where the magic numbers came from.
 
@@ -508,11 +508,11 @@ $$k=\frac{4^N N! (N-1)! \sqrt{N}}{(2N)!\sqrt{\pi}}\sqrt{2ln(10)}\sqrt{\frac{1}{2
 float(4^20*20!*(20-1)!*sqrt(20)*sqrt(2*log(10))/((2*20)!*sqrt(%pi)*sqrt(2*20)));
 ```
 
-###Source Code
+### Source Code
 
 http://github.com/lstange/mcgs/
 
-###References
+### References
 
 [1] M. M. Siddiqui (1964): "Statistical Inference for Rayleigh Distributions", *Radio Science Journal of Research Vol 68D, No.9* 
 http://ballistipedia.com/images/7/7a/Statistical_Inference_for_Rayleigh_Distributions_-_Siddiqui%2C_1964.pdf
