@@ -8,10 +8,13 @@
 
 	gcc -o cuba -O3 cuba.c -lcuba -lm
 
+====== N=5 ======
+
+./cuba 11
+
    3.0658794642
 +- 0.0000015887
 
-./cuba 11
 VEGAS result: neval 100004999500  fail 1
    3.0658794641
 +- 0.0000015903
@@ -20,6 +23,14 @@ VEGAS result: neval 100004999500  fail 1
 VEGAS result: neval 251309682000  fail 0
    3.0658794660
 +- 0.0000010000
+
+====== N=10 ======
+
+./cuba 11
+
+VEGAS result: neval 100004999500  fail 1
+   3.8115848070
++- 0.0000016397
 
 */
 
